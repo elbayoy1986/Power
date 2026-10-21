@@ -6,6 +6,7 @@ Hecha en **PHP + MySQL** y responsive (pensada primero para el teléfono).
 
 📄 Propuesta completa y análisis de procesos: [`docs/PROPUESTA.md`](docs/PROPUESTA.md)
 🏗️ Arquitectura, diagrama entidad-relación, flujos y seguridad: [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md)
+📘 Manual interactivo (guías por rol, simulador de caja, validador de CAI, autoevaluación): [`docs/manual/manual.html`](docs/manual/manual.html)
 
 ![Arquitectura](docs/diagramas/1-arquitectura.png)
 
