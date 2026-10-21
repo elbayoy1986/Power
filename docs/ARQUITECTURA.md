@@ -27,6 +27,10 @@ flowchart LR
             PE["PricingEngine<br/>promos + ley + ISV<br/>(puro, sin BD)"]
             FS["FacturacionService<br/>CAI + venta + inventario"]
             CR["CatalogoRepository"]
+            CJ["CajaService<br/>turnos · arqueo"]
+            INV["InventarioService<br/>kárdex · costo promedio"]
+            CP["ComprasService<br/>proveedores → inventario"]
+            PS["ProductosService<br/>alta · CSV"]
         end
     end
 
@@ -40,7 +44,12 @@ flowchart LR
     API --> CS --> CR
     CS --> PE
     API --> FS --> CS
-    CR & FS & V --> DB
+    API --> CJ
+    FS --> INV
+    V --> CJ & CP & PS
+    CP --> INV
+    PS --> INV
+    CR & FS & V & CJ & INV & CP --> DB
     V -. factura .-> IMP
     DB -. v_ventas_diarias / v_estado_cai .-> BI
 ```
@@ -51,7 +60,7 @@ flowchart LR
 |---|---|---|---|
 | Presentación | `public/assets/*.css,js`, `views/*.php` | UI responsive, armado del carrito | **Nunca** calcula montos que se cobran |
 | Entrada | `public/index.php`, `public/api.php` | Ruteo, sesión, roles, CSRF, JSON | Valida el token en todo POST |
-| Aplicación | `src/Ventas/*` | Casos de uso: cotizar y facturar | Transacción única por venta |
+| Aplicación | `src/Ventas/*`, `src/Caja/*`, `src/Compras/*`, `src/Inventario/*`, `src/Catalogo/ProductosService.php` | Casos de uso: cotizar, facturar, turnos, compras, inventario | Transacción única por operación; todo cambio de existencia deja movimiento en kárdex |
 | Dominio | `src/Pricing/PricingEngine.php` | Promos, descuentos de ley, ISV | Puro: sin BD, 100 % testeable |
 | Datos | `src/Catalogo/*`, `src/Support/Database.php` | Consultas PDO preparadas | Montos en **centavos (INT)** |
 
@@ -62,16 +71,19 @@ Power/
 │   ├── index.php           router de pantallas
 │   ├── api.php             API JSON del POS
 │   └── assets/             app.css · pos.js
-├── views/                  _layout · login · pos · combos · promociones · descuentos · cai · erp · factura
+├── views/                  _layout · login · pos · caja · cierre · productos · compras · inventario · combos · promociones · descuentos · cai · erp · factura
 ├── src/
 │   ├── bootstrap.php       autoload PSR-4 (App\ → src/), zona horaria America/Tegucigalpa
 │   ├── Pricing/            PricingEngine
 │   ├── Ventas/             CarritoService · FacturacionService
-│   ├── Catalogo/           CatalogoRepository
+│   ├── Caja/               CajaService (apertura, movimientos, arqueo, cierre)
+│   ├── Compras/            ComprasService (borrador → recibida)
+│   ├── Inventario/         InventarioService (kárdex, ajustes, traslados, costo promedio)
+│   ├── Catalogo/           CatalogoRepository · ProductosService (alta y CSV)
 │   └── Support/            Database · Auth · Money · NumeroALetras
 ├── config/                 config.example.php (config.php fuera de git)
-├── database/               schema.sql · seed.sql
-├── tests/run.php           pruebas del motor
+├── database/               schema.sql · seed.sql · migraciones/002_caja_compras_inventario.sql
+├── tests/                  run.php (motor) · integracion.php (caja, compras, inventario contra MySQL)
 └── docs/                   PROPUESTA · ARQUITECTURA · capturas · diagramas
 ```
 
@@ -98,14 +110,20 @@ flowchart TB
     subgraph LEY["👴 Descuentos de ley"]
         descuentos_legales
     end
+    subgraph CAJ["💵 Caja"]
+        turnos_caja; caja_movimientos
+    end
     subgraph FAC["🧾 Facturación SAR"]
         cai; ventas; venta_lineas; venta_linea_opciones
+    end
+    subgraph COM["🚚 Compras"]
+        proveedores; compras; compra_lineas
     end
     subgraph INV["📦 Inventario (ERP)"]
         inventario; inventario_movimientos
     end
 
-    tiendas --> usuarios & cai & ventas & inventario & precios_tienda & promocion_tiendas
+    tiendas --> usuarios & cai & ventas & inventario & precios_tienda & promocion_tiendas & turnos_caja & compras
     categorias --> productos & combos
     productos --> combo_opciones & precios_tienda & inventario
     combos --> combo_grupos --> combo_opciones
@@ -113,7 +131,12 @@ flowchart TB
     promocion_items -.-> productos & combos & categorias
     cai --> ventas --> venta_lineas --> venta_linea_opciones
     descuentos_legales --> ventas
-    usuarios --> ventas
+    usuarios --> ventas & turnos_caja
+    turnos_caja --> ventas & caja_movimientos
+    proveedores --> compras --> compra_lineas
+    compra_lineas -.-> productos
+    compras -. al recibir .-> inventario_movimientos
+    ventas -. descarga .-> inventario_movimientos
 ```
 
 ### 2.2 Diagrama entidad-relación completo
@@ -249,6 +272,7 @@ erDiagram
         bigint id PK
         int tienda_id FK
         int usuario_id FK
+        int turno_id FK "turno de caja"
         int cai_id FK
         char cai "snapshot"
         char numero_factura UK "001-001-01-00000001"
@@ -272,6 +296,7 @@ erDiagram
         int total
         varchar total_letras
         enum forma_pago
+        int monto_efectivo "para el arqueo"
         enum estado "EMITIDA ANULADA"
     }
     venta_lineas {
@@ -300,15 +325,76 @@ erDiagram
         int producto_id PK,FK
         decimal existencia
         decimal minimo
+        int costo_promedio "ponderado, sin ISV"
     }
     inventario_movimientos {
         bigint id PK
         int tienda_id FK
         int producto_id FK
-        enum tipo "VENTA ENTRADA AJUSTE TRASLADO MERMA"
+        enum tipo "VENTA COMPRA AJUSTE TRASLADO MERMA"
         decimal cantidad "negativo = salida"
-        varchar referencia "No. factura"
+        varchar referencia "factura o compra"
+        int costo_unitario
+        int usuario_id FK
+        varchar motivo "ajustes y mermas"
         datetime fecha
+    }
+    turnos_caja {
+        int id PK
+        int tienda_id FK
+        int usuario_id FK "cajero"
+        datetime apertura
+        int fondo_inicial
+        datetime cierre
+        int cerrado_por FK
+        int efectivo_esperado
+        int efectivo_contado
+        int diferencia "negativo = faltante"
+        text conteo "JSON denominaciones"
+        varchar notas
+        enum estado "ABIERTO CERRADO"
+        tinyint abierto UK "generada: 1 turno abierto por usuario"
+    }
+    caja_movimientos {
+        bigint id PK
+        int turno_id FK
+        int usuario_id FK
+        enum tipo "INGRESO RETIRO"
+        int monto
+        varchar motivo
+        datetime fecha
+    }
+    proveedores {
+        int id PK
+        char rtn UK
+        varchar nombre
+        varchar telefono
+        varchar email
+        tinyint activo
+    }
+    compras {
+        int id PK
+        int tienda_id FK
+        int proveedor_id FK
+        int usuario_id FK
+        varchar numero_documento "UK con proveedor"
+        date fecha_documento
+        enum estado "BORRADOR RECIBIDA ANULADA"
+        int subtotal
+        int isv
+        int total
+        datetime recibida_en
+        int recibida_por FK
+    }
+    compra_lineas {
+        bigint id PK
+        int compra_id FK
+        int producto_id FK
+        decimal cantidad
+        int costo_unitario "sin ISV"
+        enum tipo_impuesto
+        int subtotal
+        int isv
     }
 
     tiendas ||--o{ usuarios : "emplea"
@@ -338,6 +424,15 @@ erDiagram
     cai ||--o{ ventas : "numera"
     usuarios ||--o{ ventas : "factura"
     descuentos_legales |o--o{ ventas : "otorgado en"
+    tiendas ||--o{ turnos_caja : "abre"
+    usuarios ||--o{ turnos_caja : "responsable"
+    turnos_caja ||--o{ ventas : "cobra"
+    turnos_caja ||--o{ caja_movimientos : "entradas y retiros"
+    tiendas ||--o{ compras : "recibe"
+    proveedores ||--o{ compras : "factura"
+    compras ||--|{ compra_lineas : "detalle"
+    productos ||--o{ compra_lineas : "comprado"
+    usuarios ||--o{ inventario_movimientos : "registra"
     ventas ||--|{ venta_lineas : "detalle"
     venta_lineas ||--o{ venta_linea_opciones : "opciones del combo"
 ```
@@ -357,6 +452,13 @@ erDiagram
 | `precios_tienda` opcional | Precio central por defecto con excepciones por plaza (aeropuerto, mall) |
 | `cai.correlativo_actual` + `FOR UPDATE` | Correlativo atómico: dos cajas nunca emiten el mismo número |
 | `inventario_movimientos` (kárdex) | Auditoría: cada salida queda ligada al número de factura |
+| `turnos_caja.abierto` columna generada + `UNIQUE (usuario_id, abierto)` | La BD impide dos turnos abiertos del mismo cajero, incluso con doble clic |
+| `ventas.monto_efectivo` | El arqueo suma solo lo cobrado en efectivo (también la parte efectiva de un pago mixto) |
+| Diferencia de caja obligatoriamente explicada | No se cierra un turno con faltante o sobrante sin nota |
+| `inventario.costo_promedio` ponderado | Valor del inventario y margen sin recorrer el histórico; se recalcula al recibir compras y traslados |
+| `UNIQUE (proveedor_id, numero_documento)` en compras | Evita cargar dos veces la misma factura de proveedor |
+| Compra recibida inmutable | Las correcciones se hacen con ajustes: el kárdex conserva la historia |
+| Kárdex con saldo reconstruido desde la existencia actual | El saldo mostrado siempre cuadra con la existencia |
 
 ### 2.4 Índices y restricciones relevantes
 
@@ -367,6 +469,9 @@ erDiagram
 | `cai` | `idx_cai_tienda (tienda_id, activo, fecha_limite)` | Buscar el CAI vigente al facturar |
 | `cai` | `CHECK rango_final >= rango_inicial`, `UNIQUE cai` | Integridad fiscal |
 | `inventario_movimientos` | `idx_mov_tienda_fecha` | Kárdex por tienda |
+| `turnos_caja` | `UNIQUE (usuario_id, abierto)` | Un turno abierto por cajero |
+| `compras` | `UNIQUE (proveedor_id, numero_documento)` | Sin facturas de proveedor duplicadas |
+| `compra_lineas` | `CHECK cantidad > 0` | Integridad de la compra |
 | `empresa` | `CHECK id = 1` | Una sola empresa emisora |
 
 ### 2.5 Vistas para el ERP y BI
@@ -460,6 +565,57 @@ stateDiagram-v2
 
 ---
 
+### 3.4 Turno de caja: apertura → ventas → cierre con arqueo
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Cajero
+    actor Supervisor
+    participant POS as Caja (Vender)
+    participant CJ as CajaService
+    participant DB as MySQL
+
+    Cajero->>POS: entra a Vender
+    POS->>CJ: turnoAbierto(usuario)
+    alt sin turno
+        POS-->>Cajero: "Abra su turno" (bloquea la venta)
+        Cajero->>CJ: abrir(fondo inicial L 1,000)
+        CJ->>DB: INSERT turnos_caja (índice único: 1 abierto por cajero)
+    end
+    loop durante el turno
+        Cajero->>POS: factura (efectivo / tarjeta / transferencia / mixto)
+        POS->>DB: ventas.turno_id + monto_efectivo
+        Cajero->>CJ: retiro a bóveda / ingreso de cambio (con motivo)
+    end
+    Cajero->>CJ: Corte X (parcial, no cierra)
+    Cajero->>CJ: cerrar(conteo por denominación, notas)
+    CJ->>CJ: esperado = fondo + efectivo ventas + ingresos − retiros
+    alt diferencia ≠ 0 y sin notas
+        CJ-->>Cajero: rechaza: explique el faltante/sobrante
+    else
+        CJ->>DB: estado CERRADO, contado, diferencia, conteo JSON
+        CJ-->>Cajero: Reporte Z (80 mm) con firmas
+    end
+    Supervisor->>CJ: puede cerrar turnos olvidados de su tienda
+```
+
+### 3.5 Compra → inventario
+
+```mermaid
+flowchart LR
+    A[Factura del proveedor] --> B[Compra BORRADOR<br/>líneas: cantidad · costo sin ISV · impuesto]
+    B -->|valida: proveedor, no. único, fecha ≤ hoy, cantidades > 0| C{¿Recibir?}
+    C -->|Anular| X[ANULADA<br/>libera el número]
+    C -->|Recibir| D[RECIBIDA · inmutable]
+    D --> E[Existencia += cantidad]
+    D --> F[Costo promedio =<br/>exist·costo + cant·costo nuevo<br/>÷ exist + cant]
+    D --> G[Kárdex: COMPRA #id · no. factura]
+    H[Venta] --> I[Kárdex: VENTA · no. factura<br/>combos descargan cada componente]
+    J[Ajuste / merma con motivo] --> K[Kárdex: AJUSTE / MERMA]
+    L[Traslado entre tiendas] --> M[Kárdex: salida en origen + entrada al costo de origen]
+```
+
 ## 4. Seguridad y roles
 
 | Rol | Caja | Combos / Promos | Descuentos de ley / CAI | Tablero ERP |
@@ -467,6 +623,12 @@ stateDiagram-v2
 | CAJERO | ✅ su tienda | ❌ | ❌ | ❌ |
 | GERENTE | ✅ | ✅ | ❌ | ✅ (su tienda si tiene una asignada) |
 | ADMIN | ✅ todas | ✅ | ✅ | ✅ todas |
+
+| Rol | Turno de caja | Productos · Compras · Inventario |
+|---|---|---|
+| CAJERO | Abre, registra movimientos y cierra **su** turno; ve sus reportes | ❌ |
+| GERENTE | Igual, y además ve y cierra turnos de su tienda | ✅ su tienda |
+| ADMIN | Todo en cualquier tienda | ✅ todas |
 
 Controles: contraseñas con bcrypt · `session_regenerate_id` al iniciar sesión · cookies HttpOnly/SameSite · token CSRF en formularios y API ·
 PDO con `EMULATE_PREPARES=false` · salida escapada con `htmlspecialchars` · solo `public/` expuesto · precios calculados en el servidor.

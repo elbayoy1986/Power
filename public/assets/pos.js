@@ -214,28 +214,51 @@ const POS = (() => {
     $('#barra-cant').textContent = `${cant} artículo${cant === 1 ? '' : 's'} · Ver orden`;
     $('#barra-total').textContent = lps(r?.total || 0);
     $('#btn-facturar').disabled = !r;
+    pintarPago();
   }
 
-  function mostrarError(msg) { $('#error').textContent = msg; $('#error').hidden = false; }
+  // ---------- Pago: efectivo recibido, cambio y mixto ----------
+  const aCent = (v) => Math.round(parseFloat(String(v).replace(/,/g, '')) * 100);
+  function pintarPago() {
+    const forma = $('#forma-pago').value;
+    $('#bloque-efectivo').hidden = forma !== 'EFECTIVO';
+    $('#bloque-mixto').hidden = forma !== 'MIXTO';
+    const total = cotizacion?.resumen?.total || 0;
+    const rec = aCent($('#recibido').value);
+    const el = $('#cambio');
+    if (forma !== 'EFECTIVO' || !rec || !total) { el.textContent = ''; return; }
+    el.textContent = rec >= total ? 'Cambio: ' + lps(rec - total) : 'Falta: ' + lps(total - rec);
+    el.className = 'cambio ' + (rec >= total ? 'ok-txt' : 'mal-txt');
+  }
+  ['#forma-pago', '#recibido'].forEach((s) => $(s).addEventListener('input', pintarPago));
+  $('#forma-pago').addEventListener('change', pintarPago);
+
+  function mostrarError(msg) { $('#error').textContent = msg; $('#error').className = 'aviso error'; $('#error').hidden = false; }
+  function mostrarAviso(msg) { $('#error').textContent = msg; $('#error').className = 'aviso'; $('#error').hidden = false; }
 
   $('#btn-facturar').addEventListener('click', async () => {
     const b = $('#btn-facturar');
     b.disabled = true;
     try {
-      const { venta_id } = await api('facturar', {
+      const { venta_id, cambio } = await api('facturar', {
         ...cuerpo(),
         beneficiario_nombre: $('#ben-nombre').value,
         beneficiario_documento: $('#ben-doc').value,
         cliente_rtn: $('#cli-rtn').value,
         cliente_nombre: $('#cli-nombre').value,
         forma_pago: $('#forma-pago').value,
+        efectivo_recibido: $('#recibido').value ? aCent($('#recibido').value) : '',
+        monto_efectivo: $('#monto-efectivo').value ? aCent($('#monto-efectivo').value) : 0,
       });
       window.open('index.php?p=factura&id=' + venta_id, '_blank');
       orden = []; cotizacion = null;
-      ['#ben-nombre', '#ben-doc', '#cli-rtn', '#cli-nombre', '#legal'].forEach((s) => { $(s).value = ''; });
+      ['#ben-nombre', '#ben-doc', '#cli-rtn', '#cli-nombre', '#legal', '#recibido', '#monto-efectivo'].forEach((s) => { $(s).value = ''; });
+      $('#forma-pago').value = 'EFECTIVO';
+      pintarPago();
       $('#legal-datos').hidden = true;
       pintarOrden();
       cerrarOrden();
+      if (cambio > 0) mostrarAviso('Factura emitida. Entregue cambio: ' + lps(cambio));
     } catch (err) {
       mostrarError(err.message);
       b.disabled = false;

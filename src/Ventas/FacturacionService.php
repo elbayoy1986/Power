@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Ventas;
 
+use App\Inventario\InventarioService;
 use App\Support\NumeroALetras;
 use DomainException;
 use PDO;
@@ -15,14 +16,22 @@ use Throwable;
  *   (SELECT ... FOR UPDATE), por lo que dos cajas nunca obtienen el mismo número.
  * - Rechaza la emisión si el CAI venció (fecha límite) o si el rango se agotó.
  * - Guarda una copia inmutable (snapshot) de lo facturado y descarga inventario.
+ * - Toda venta pertenece a un turno de caja abierto; la parte cobrada en efectivo
+ *   alimenta el arqueo del cierre.
  */
 final class FacturacionService
 {
-    public function __construct(private PDO $db, private CarritoService $carrito)
+    public const FORMAS_PAGO = ['EFECTIVO', 'TARJETA', 'TRANSFERENCIA', 'MIXTO'];
+
+    private InventarioService $inventario;
+
+    public function __construct(private PDO $db, private CarritoService $carrito, ?InventarioService $inventario = null)
     {
+        $this->inventario = $inventario ?? new InventarioService($db);
     }
 
-    public function emitir(int $tiendaId, int $usuarioId, array $datos): int
+    /** @return array{venta_id:int, total:int, cambio:int} */
+    public function emitir(int $tiendaId, int $usuarioId, int $turnoId, array $datos): array
     {
         $legalId = !empty($datos['descuento_legal_id']) ? (int) $datos['descuento_legal_id'] : null;
         $calculo = $this->carrito->cotizar($tiendaId, $datos['items'] ?? [], $legalId);
@@ -38,19 +47,26 @@ final class FacturacionService
             throw new DomainException('El RTN debe tener 14 dígitos.');
         }
 
+        $r = $calculo['resumen'];
+        [$formaPago, $montoEfectivo, $cambio] = self::pago($datos, $r['total']);
+
         $this->db->beginTransaction();
         try {
+            $st = $this->db->prepare("SELECT tienda_id FROM turnos_caja WHERE id = ? AND usuario_id = ? AND estado = 'ABIERTO' FOR UPDATE");
+            $st->execute([$turnoId, $usuarioId]);
+            if ((int) $st->fetchColumn() !== $tiendaId) {
+                throw new DomainException('Su turno de caja no está abierto en esta tienda. Abra turno para facturar.');
+            }
             $cai = $this->tomarCorrelativo($tiendaId);
-            $r = $calculo['resumen'];
             $st = $this->db->prepare(
-                'INSERT INTO ventas (tienda_id, usuario_id, cai_id, cai, numero_factura, rango_autorizado, fecha_limite_emision,
+                'INSERT INTO ventas (tienda_id, usuario_id, turno_id, cai_id, cai, numero_factura, rango_autorizado, fecha_limite_emision,
                     cliente_rtn, cliente_nombre, descuento_legal_id, beneficiario_nombre, beneficiario_documento,
                     subtotal, descuento_promos, descuento_legal, importe_exonerado, importe_exento,
-                    importe_gravado_15, importe_gravado_18, isv_15, isv_18, total, total_letras, forma_pago)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+                    importe_gravado_15, importe_gravado_18, isv_15, isv_18, total, total_letras, forma_pago, monto_efectivo)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
             );
             $st->execute([
-                $tiendaId, $usuarioId, $cai['id'], $cai['cai'], $cai['numero'], $cai['rango'], $cai['fecha_limite'],
+                $tiendaId, $usuarioId, $turnoId, $cai['id'], $cai['cai'], $cai['numero'], $cai['rango'], $cai['fecha_limite'],
                 $rtn ?: null, trim((string) ($datos['cliente_nombre'] ?? '')) ?: 'CONSUMIDOR FINAL',
                 $regla['id'] ?? null,
                 $regla ? (trim((string) ($datos['beneficiario_nombre'] ?? '')) ?: null) : null,
@@ -58,7 +74,7 @@ final class FacturacionService
                 $r['subtotal'], $r['descuento_promos'], $r['descuento_legal'], $r['importe_exonerado'], $r['importe_exento'],
                 $r['importe_gravado_15'], $r['importe_gravado_18'], $r['isv_15'], $r['isv_18'], $r['total'],
                 NumeroALetras::lempiras($r['total']),
-                in_array($datos['forma_pago'] ?? '', ['EFECTIVO', 'TARJETA', 'TRANSFERENCIA', 'MIXTO'], true) ? $datos['forma_pago'] : 'EFECTIVO',
+                $formaPago, $montoEfectivo,
             ]);
             $ventaId = (int) $this->db->lastInsertId();
 
@@ -68,10 +84,6 @@ final class FacturacionService
             );
             $stOpcion = $this->db->prepare(
                 'INSERT INTO venta_linea_opciones (venta_linea_id, producto_id, descripcion, recargo) VALUES (?,?,?,?)'
-            );
-            $stInv = $this->db->prepare('UPDATE inventario SET existencia = existencia - ? WHERE tienda_id = ? AND producto_id = ?');
-            $stMov = $this->db->prepare(
-                "INSERT INTO inventario_movimientos (tienda_id, producto_id, tipo, cantidad, referencia) VALUES (?, ?, 'VENTA', ?, ?)"
             );
 
             foreach ($calculo['lineas'] as $l) {
@@ -89,17 +101,44 @@ final class FacturacionService
                     $stOpcion->execute([$lineaId, $o['producto_id'], $o['descripcion'], $o['recargo']]);
                 }
                 foreach ($componentes as $pid) {
-                    $stInv->execute([$l['cantidad'], $tiendaId, $pid]);
-                    $stMov->execute([$tiendaId, $pid, -$l['cantidad'], $cai['numero']]);
+                    $this->inventario->registrarVenta($tiendaId, (int) $pid, (float) $l['cantidad'], $cai['numero'], $usuarioId);
                 }
             }
 
             $this->db->commit();
-            return $ventaId;
+            return ['venta_id' => $ventaId, 'total' => $r['total'], 'cambio' => $cambio];
         } catch (Throwable $e) {
             $this->db->rollBack();
             throw $e;
         }
+    }
+
+    /**
+     * Forma de pago y parte en efectivo (centavos) para el arqueo.
+     *  - EFECTIVO: todo el total; si se indica lo recibido, debe cubrir el total y se calcula el cambio.
+     *  - MIXTO: el cajero indica cuánto fue en efectivo; debe ser mayor que 0 y menor que el total.
+     *  - TARJETA / TRANSFERENCIA: nada en efectivo.
+     * @return array{0:string,1:int,2:int} [forma, monto_efectivo, cambio]
+     */
+    public static function pago(array $datos, int $total): array
+    {
+        $forma = in_array($datos['forma_pago'] ?? '', self::FORMAS_PAGO, true) ? $datos['forma_pago'] : 'EFECTIVO';
+        $recibido = isset($datos['efectivo_recibido']) && $datos['efectivo_recibido'] !== '' ? (int) $datos['efectivo_recibido'] : null;
+        if ($forma === 'EFECTIVO') {
+            if ($recibido !== null && $recibido < $total) {
+                throw new DomainException(sprintf('El efectivo recibido (L %s) no cubre el total (L %s).',
+                    number_format($recibido / 100, 2), number_format($total / 100, 2)));
+            }
+            return [$forma, $total, $recibido !== null ? $recibido - $total : 0];
+        }
+        if ($forma === 'MIXTO') {
+            $efectivo = (int) ($datos['monto_efectivo'] ?? 0);
+            if ($efectivo <= 0 || $efectivo >= $total) {
+                throw new DomainException('En pago mixto indique la parte en efectivo: mayor que cero y menor que el total.');
+            }
+            return [$forma, $efectivo, 0];
+        }
+        return [$forma, 0, 0];
     }
 
     private function tomarCorrelativo(int $tiendaId): array

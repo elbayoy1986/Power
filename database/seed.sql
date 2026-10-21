@@ -83,5 +83,15 @@ INSERT INTO cai (tienda_id, cai, punto_emision, tipo_documento, rango_inicial, r
 (2, '8C1E44-0B7D2A-9F3C61-E2A4B8-55D0C7-1A', '001', '01', 1, 5000, 0, '2027-06-30'),
 (3, 'F07A2B-6D9E13-C4B850-1A7F3E-90D2B6-3C', '001', '01', 1, 5000, 0, '2026-11-15');
 
-INSERT INTO inventario (tienda_id, producto_id, existencia, minimo)
-SELECT t.id, p.id, 200, 30 FROM tiendas t CROSS JOIN productos p;
+-- Inventario inicial: 200 unidades por tienda, costo de ejemplo = 35% del precio sin ISV
+INSERT INTO inventario (tienda_id, producto_id, existencia, minimo, costo_promedio)
+SELECT t.id, p.id, 200, 30, ROUND(p.precio_centavos / 1.15 * 0.35) FROM tiendas t CROSS JOIN productos p;
+
+INSERT INTO inventario_movimientos (tienda_id, producto_id, tipo, cantidad, referencia, costo_unitario, usuario_id, motivo)
+SELECT i.tienda_id, i.producto_id, 'AJUSTE', i.existencia, 'INICIAL', i.costo_promedio, 1, 'Inventario inicial'
+FROM inventario i;
+
+INSERT INTO proveedores (rtn, nombre, telefono, email) VALUES
+('08019000000011', 'Distribuidora de Carnes del Valle', '+504 2234-1100', 'ventas@carnesdelvalle.hn'),
+('05019000000022', 'Embotelladora Nacional',           '+504 2556-2200', 'pedidos@embotelladora.hn'),
+('08019000000033', 'Panificadora La Espiga',           '+504 2238-3300', 'pedidos@laespiga.hn');

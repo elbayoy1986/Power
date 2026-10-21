@@ -6,10 +6,14 @@ function layout_inicio(string $titulo, string $activo, PDO $db): void
     $u = Auth::usuario();
     $tiendas = $db->query('SELECT id, nombre FROM tiendas WHERE activa = 1 ORDER BY id')->fetchAll();
     $menu = [
-        'pos' => ['Caja', ['ADMIN', 'GERENTE', 'CAJERO']],
+        'pos' => ['Vender', ['ADMIN', 'GERENTE', 'CAJERO']],
+        'caja' => ['Turno', ['ADMIN', 'GERENTE', 'CAJERO']],
+        'productos' => ['Productos', ['ADMIN', 'GERENTE']],
         'combos' => ['Combos', ['ADMIN', 'GERENTE']],
         'promociones' => ['Promociones', ['ADMIN', 'GERENTE']],
-        'descuentos' => ['Descuentos de ley', ['ADMIN']],
+        'descuentos' => ['Descuentos', ['ADMIN']],
+        'compras' => ['Compras', ['ADMIN', 'GERENTE']],
+        'inventario' => ['Inventario', ['ADMIN', 'GERENTE']],
         'cai' => ['CAI', ['ADMIN']],
         'erp' => ['Tablero ERP', ['ADMIN', 'GERENTE']],
     ];
@@ -44,7 +48,7 @@ function layout_inicio(string $titulo, string $activo, PDO $db): void
         </select>
       </form>
     <?php endif; ?>
-    <a href="index.php?p=logout" class="salir"><?= e($u['nombre']) ?> · Salir</a>
+    <a href="index.php?p=logout" class="salir" title="Cerrar sesión de <?= e($u['nombre']) ?>"><span class="solo-menu"><?= e($u['nombre']) ?> · </span>Salir</a>
   </nav>
 </header>
 <main class="contenido">

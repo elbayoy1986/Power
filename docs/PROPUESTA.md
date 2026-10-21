@@ -35,11 +35,14 @@ Power POS resuelve los tres con una sola plataforma web:
 5. **Descuentos de ley (Honduras)**: tercera edad, cuarta edad y discapacidad, con porcentaje, tope, acumulable con promos, exento de ISV y requisito de documento.
 6. **Facturación CAI**: registro de CAI, número `EEE-PPP-TT-NNNNNNNN`, rango autorizado, fecha límite, desglose fiscal (exento, exonerado, gravado 15 %, gravado 18 %, ISV), total en letras y formato térmico de 80 mm.
 7. **Mini ERP**: tablero consolidado con filtro de fechas, alertas de CAI, inventario bajo mínimo y descarga automática del inventario al vender.
-8. **Seguridad**: login con bcrypt, roles (ADMIN, GERENTE, CAJERO), CSRF, consultas preparadas y precios calculados solo en el servidor.
+8. **Apertura y cierre de caja**: turno con fondo inicial, ventas ligadas al turno, entradas y retiros de efectivo con motivo, cambio al cobrar, pago mixto, corte X, arqueo por denominación de lempiras, faltante o sobrante con nota obligatoria y reporte Z de 80 mm con firmas.
+9. **Productos y carga masiva**: alta y edición con SKU único, categorías nuevas al vuelo e importación CSV o Excel (`,` o `;`) que crea o actualiza y es de todo o nada.
+10. **Compras e inventario**: proveedores, compras en borrador o recibidas (sin facturas duplicadas), entrada al inventario con costo promedio ponderado, ajustes y mermas con motivo, traslados entre tiendas, mínimos por tienda y kárdex con saldo.
+11. **Seguridad**: login con bcrypt, roles (ADMIN, GERENTE, CAJERO), CSRF, consultas preparadas y precios calculados solo en el servidor.
 
 ### Fuera del MVP (roadmap)
-Modo offline, impresión ESC/POS directa, KDS (pantalla de cocina), recetas e insumos, compras y proveedores,
-notas de crédito, arqueo de caja, delivery y apps de terceros, y facturación electrónica cuando la SAR la exija.
+Modo offline, impresión ESC/POS directa, KDS (pantalla de cocina), recetas e insumos (descargar ingredientes en vez de productos),
+notas de crédito y devoluciones a proveedor, órdenes de compra con aprobación, delivery y apps de terceros, y facturación electrónica cuando la SAR la exija.
 
 ---
 

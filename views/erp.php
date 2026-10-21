@@ -24,6 +24,17 @@ $top = $q("SELECT l.descripcion, SUM(l.cantidad) unidades, SUM(l.total) ventas
            GROUP BY l.descripcion ORDER BY ventas DESC LIMIT 8");
 $porHora = $q("SELECT HOUR(v.fecha) hora, COUNT(*) facturas FROM ventas v WHERE $filtro GROUP BY HOUR(v.fecha) ORDER BY hora");
 
+// Compras recibidas y diferencias de caja de turnos cerrados en el período
+$pT = array_merge([$desde, $hasta], $soloTienda ? [$soloTienda] : []);
+$st = $db->prepare("SELECT COALESCE(SUM(total),0) total, COUNT(*) n FROM compras
+    WHERE estado = 'RECIBIDA' AND fecha_documento BETWEEN ? AND ?" . ($soloTienda ? ' AND tienda_id = ?' : ''));
+$st->execute($pT);
+$comprasK = $st->fetch();
+$st = $db->prepare("SELECT COALESCE(SUM(LEAST(diferencia,0)),0) faltantes, COALESCE(SUM(GREATEST(diferencia,0)),0) sobrantes, COUNT(*) n
+    FROM turnos_caja WHERE estado = 'CERRADO' AND cierre >= ? AND cierre < DATE_ADD(?, INTERVAL 1 DAY)" . ($soloTienda ? ' AND tienda_id = ?' : ''));
+$st->execute($pT);
+$cajaK = $st->fetch();
+
 $sqlStock = 'SELECT t.nombre tienda, p.nombre producto, i.existencia, i.minimo
              FROM inventario i JOIN tiendas t ON t.id = i.tienda_id JOIN productos p ON p.id = i.producto_id
              WHERE p.controla_stock = 1 AND i.existencia <= i.minimo' . ($soloTienda ? ' AND i.tienda_id = ' . (int) $soloTienda : '') . '
@@ -55,13 +66,16 @@ layout_inicio('Tablero ERP', 'erp', $db);
     <?= (int) $a['disponibles'] ?> números disponibles, vence en <?= (int) $a['dias_restantes'] ?> días. Solicite nuevo CAI a la SAR.</div>
 <?php endforeach; ?>
 
-<div class="kpis">
+<div class="kpis ocho">
   <div class="kpi"><span>Ventas</span><b><?= lps($k['ventas']) ?></b></div>
   <div class="kpi"><span>Facturas</span><b><?= number_format((int) $k['facturas']) ?></b></div>
   <div class="kpi"><span>Ticket promedio</span><b><?= lps((int) round($k['ticket'])) ?></b></div>
   <div class="kpi"><span>Descuento promociones</span><b><?= lps($k['promos']) ?></b></div>
   <div class="kpi"><span>Descuento de ley</span><b><?= lps($k['legal']) ?></b></div>
   <div class="kpi"><span>ISV generado</span><b><?= lps($k['isv']) ?></b></div>
+  <div class="kpi"><span>Compras recibidas</span><b><?= lps($comprasK['total']) ?></b><small><?= (int) $comprasK['n'] ?> facturas de proveedor</small></div>
+  <div class="kpi"><span>Diferencias de caja</span><b class="<?= $cajaK['faltantes'] ? 'mal-txt' : '' ?>"><?= lps((int) $cajaK['faltantes']) ?></b>
+    <small>faltantes · sobrantes <?= lps((int) $cajaK['sobrantes']) ?> · <?= (int) $cajaK['n'] ?> cierres</small></div>
 </div>
 
 <div class="columnas">

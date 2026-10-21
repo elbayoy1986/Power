@@ -1,9 +1,31 @@
 <?php
+use App\Caja\CajaService;
 use App\Support\Auth;
 
+$turno = (new CajaService($db))->turnoAbierto($usuario['id']);
+
 require __DIR__ . '/_layout.php';
-layout_inicio('Caja', 'pos', $db);
+layout_inicio('Vender', 'pos', $db);
+
+if (!$turno || (int) $turno['tienda_id'] !== Auth::tiendaId()):
 ?>
+<section class="tarjeta apertura">
+  <?php if ($turno): ?>
+    <h2>Su turno está abierto en <?= e($turno['tienda']) ?></h2>
+    <p>Cambie a esa tienda en la barra superior, o cierre ese turno en <a href="index.php?p=caja">Turno de caja</a> antes de vender aquí.</p>
+  <?php else: ?>
+    <h2>Abra su turno para empezar a vender</h2>
+    <p class="tenue">Cuente el efectivo con que inicia la caja (fondo de cambio).</p>
+    <form method="post" action="index.php?p=caja" class="fila">
+      <input type="hidden" name="csrf" value="<?= e(Auth::csrf()) ?>">
+      <input type="hidden" name="accion" value="abrir">
+      <input type="hidden" name="volver" value="pos">
+      <label>Fondo inicial (L) <input name="fondo" inputmode="decimal" required placeholder="1,000.00" id="fondo-pos" autofocus></label>
+      <button class="btn primario">Abrir turno</button>
+    </form>
+  <?php endif; ?>
+</section>
+<?php layout_fin(); return; endif; ?>
 <div class="pos" id="pos" data-csrf="<?= e(Auth::csrf()) ?>">
   <section class="catalogo">
     <div class="filtros" id="categorias" role="tablist"></div>
@@ -42,6 +64,11 @@ layout_inicio('Caja', 'pos', $db);
       <select id="forma-pago" aria-label="Forma de pago">
         <option>EFECTIVO</option><option>TARJETA</option><option>TRANSFERENCIA</option><option>MIXTO</option>
       </select>
+      <div class="fila" id="bloque-efectivo">
+        <label>Efectivo recibido (L) <input id="recibido" inputmode="decimal" placeholder="Opcional" autocomplete="off"></label>
+        <p class="cambio" id="cambio" aria-live="polite"></p>
+      </div>
+      <label id="bloque-mixto" hidden>Parte en efectivo (L) <input id="monto-efectivo" inputmode="decimal" autocomplete="off"></label>
       <button class="btn primario grande" id="btn-facturar" disabled>Facturar</button>
     </div>
     <p class="aviso error" id="error" hidden></p>

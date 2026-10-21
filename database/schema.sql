@@ -187,12 +187,51 @@ CREATE TABLE cai (
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
+-- Caja: turnos (apertura / cierre con arqueo) y movimientos de efectivo
+-- ---------------------------------------------------------------------
+CREATE TABLE turnos_caja (
+  id                 INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tienda_id          INT UNSIGNED NOT NULL,
+  usuario_id         INT UNSIGNED NOT NULL COMMENT 'Cajero responsable del efectivo',
+  apertura           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  fondo_inicial      INT UNSIGNED NOT NULL COMMENT 'Efectivo con que abre (centavos)',
+  cierre             DATETIME NULL,
+  cerrado_por        INT UNSIGNED NULL,
+  efectivo_esperado  INT NULL COMMENT 'fondo + ventas en efectivo + ingresos - retiros',
+  efectivo_contado   INT NULL,
+  diferencia         INT NULL COMMENT 'contado - esperado (negativo = faltante)',
+  conteo             TEXT NULL COMMENT 'JSON de denominaciones contadas',
+  notas              VARCHAR(255) NULL,
+  estado             ENUM('ABIERTO','CERRADO') NOT NULL DEFAULT 'ABIERTO',
+  -- Solo un turno ABIERTO por usuario: la columna vale 1 si está abierto y NULL si no (NULL no choca en UNIQUE)
+  abierto            TINYINT GENERATED ALWAYS AS (CASE WHEN estado = 'ABIERTO' THEN 1 END) STORED,
+  UNIQUE KEY uq_un_turno_abierto (usuario_id, abierto),
+  FOREIGN KEY (tienda_id)   REFERENCES tiendas(id),
+  FOREIGN KEY (usuario_id)  REFERENCES usuarios(id),
+  FOREIGN KEY (cerrado_por) REFERENCES usuarios(id),
+  INDEX idx_turnos_tienda (tienda_id, apertura)
+) ENGINE=InnoDB;
+
+CREATE TABLE caja_movimientos (
+  id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  turno_id    INT UNSIGNED NOT NULL,
+  usuario_id  INT UNSIGNED NOT NULL,
+  tipo        ENUM('INGRESO','RETIRO') NOT NULL COMMENT 'RETIRO = remesa a bóveda, pago menor...',
+  monto       INT UNSIGNED NOT NULL,
+  motivo      VARCHAR(150) NOT NULL,
+  fecha       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (turno_id)   REFERENCES turnos_caja(id),
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
 -- Ventas / facturas (snapshot inmutable de lo emitido)
 -- ---------------------------------------------------------------------
 CREATE TABLE ventas (
   id                      BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   tienda_id               INT UNSIGNED NOT NULL,
   usuario_id              INT UNSIGNED NOT NULL,
+  turno_id                INT UNSIGNED NULL COMMENT 'Turno de caja en que se cobró',
   cai_id                  INT UNSIGNED NOT NULL,
   cai                     CHAR(37) NOT NULL,
   numero_factura          CHAR(19) NOT NULL UNIQUE,
@@ -216,9 +255,11 @@ CREATE TABLE ventas (
   total                   INT NOT NULL,
   total_letras            VARCHAR(255) NOT NULL,
   forma_pago              ENUM('EFECTIVO','TARJETA','TRANSFERENCIA','MIXTO') NOT NULL DEFAULT 'EFECTIVO',
+  monto_efectivo          INT NOT NULL DEFAULT 0 COMMENT 'Parte del total cobrada en efectivo (arqueo)',
   estado                  ENUM('EMITIDA','ANULADA') NOT NULL DEFAULT 'EMITIDA',
   FOREIGN KEY (tienda_id)          REFERENCES tiendas(id),
   FOREIGN KEY (usuario_id)         REFERENCES usuarios(id),
+  FOREIGN KEY (turno_id)           REFERENCES turnos_caja(id),
   FOREIGN KEY (cai_id)             REFERENCES cai(id),
   FOREIGN KEY (descuento_legal_id) REFERENCES descuentos_legales(id),
   INDEX idx_ventas_tienda_fecha (tienda_id, fecha)
@@ -257,6 +298,7 @@ CREATE TABLE inventario (
   producto_id  INT UNSIGNED NOT NULL,
   existencia   DECIMAL(12,3) NOT NULL DEFAULT 0,
   minimo       DECIMAL(12,3) NOT NULL DEFAULT 0,
+  costo_promedio INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Costo unitario promedio ponderado SIN ISV (centavos)',
   PRIMARY KEY (tienda_id, producto_id),
   FOREIGN KEY (tienda_id)   REFERENCES tiendas(id),
   FOREIGN KEY (producto_id) REFERENCES productos(id)
@@ -266,13 +308,65 @@ CREATE TABLE inventario_movimientos (
   id           BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   tienda_id    INT UNSIGNED NOT NULL,
   producto_id  INT UNSIGNED NOT NULL,
-  tipo         ENUM('VENTA','ENTRADA','AJUSTE','TRASLADO_SALIDA','TRASLADO_ENTRADA','MERMA') NOT NULL,
+  tipo         ENUM('VENTA','COMPRA','ENTRADA','AJUSTE','TRASLADO_SALIDA','TRASLADO_ENTRADA','MERMA') NOT NULL,
   cantidad     DECIMAL(12,3) NOT NULL COMMENT 'Negativo = salida',
   referencia   VARCHAR(60),
+  costo_unitario INT UNSIGNED NULL COMMENT 'Costo sin ISV en compras y traslados',
+  usuario_id   INT UNSIGNED NULL,
+  motivo       VARCHAR(150) NULL COMMENT 'Obligatorio en ajustes y mermas',
   fecha        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (tienda_id)   REFERENCES tiendas(id),
   FOREIGN KEY (producto_id) REFERENCES productos(id),
   INDEX idx_mov_tienda_fecha (tienda_id, fecha)
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
+-- Compras a proveedores (entran al inventario al RECIBIR)
+-- ---------------------------------------------------------------------
+CREATE TABLE proveedores (
+  id        INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  rtn       CHAR(14) NULL UNIQUE,
+  nombre    VARCHAR(150) NOT NULL,
+  telefono  VARCHAR(30),
+  email     VARCHAR(120),
+  activo    TINYINT(1) NOT NULL DEFAULT 1
+) ENGINE=InnoDB;
+
+CREATE TABLE compras (
+  id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tienda_id         INT UNSIGNED NOT NULL,
+  proveedor_id      INT UNSIGNED NOT NULL,
+  usuario_id        INT UNSIGNED NOT NULL,
+  numero_documento  VARCHAR(40) NOT NULL COMMENT 'No. de factura del proveedor',
+  fecha_documento   DATE NOT NULL,
+  estado            ENUM('BORRADOR','RECIBIDA','ANULADA') NOT NULL DEFAULT 'BORRADOR',
+  subtotal          INT NOT NULL DEFAULT 0,
+  isv               INT NOT NULL DEFAULT 0,
+  total             INT NOT NULL DEFAULT 0,
+  notas             VARCHAR(255),
+  creada_en         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  recibida_en       DATETIME NULL,
+  recibida_por      INT UNSIGNED NULL,
+  UNIQUE KEY uq_doc_proveedor (proveedor_id, numero_documento) COMMENT 'Evita cargar dos veces la misma factura',
+  FOREIGN KEY (tienda_id)    REFERENCES tiendas(id),
+  FOREIGN KEY (proveedor_id) REFERENCES proveedores(id),
+  FOREIGN KEY (usuario_id)   REFERENCES usuarios(id),
+  FOREIGN KEY (recibida_por) REFERENCES usuarios(id),
+  INDEX idx_compras_tienda_fecha (tienda_id, fecha_documento)
+) ENGINE=InnoDB;
+
+CREATE TABLE compra_lineas (
+  id              BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  compra_id       INT UNSIGNED NOT NULL,
+  producto_id     INT UNSIGNED NOT NULL,
+  cantidad        DECIMAL(12,3) NOT NULL,
+  costo_unitario  INT UNSIGNED NOT NULL COMMENT 'Sin ISV (centavos)',
+  tipo_impuesto   ENUM('G15','G18','EXE') NOT NULL DEFAULT 'G15',
+  subtotal        INT NOT NULL,
+  isv             INT NOT NULL,
+  FOREIGN KEY (compra_id)   REFERENCES compras(id) ON DELETE CASCADE,
+  FOREIGN KEY (producto_id) REFERENCES productos(id),
+  CONSTRAINT chk_compra_cantidad CHECK (cantidad > 0)
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------

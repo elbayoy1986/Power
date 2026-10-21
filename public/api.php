@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/src/bootstrap.php';
 
+use App\Caja\CajaService;
 use App\Catalogo\CatalogoRepository;
 use App\Support\Auth;
 use App\Support\Database;
@@ -48,8 +49,11 @@ try {
             responder($carrito->cotizar($tiendaId, $entrada['items'] ?? [], $legalId));
 
         case 'facturar':
-            $ventaId = (new FacturacionService($db, $carrito))->emitir($tiendaId, $usuario['id'], $entrada);
-            responder(['venta_id' => $ventaId]);
+            $turno = (new CajaService($db))->turnoAbierto($usuario['id']);
+            if (!$turno) {
+                throw new DomainException('Abra su turno de caja antes de facturar.');
+            }
+            responder((new FacturacionService($db, $carrito))->emitir($tiendaId, $usuario['id'], (int) $turno['id'], $entrada));
 
         default:
             responder(['error' => 'Acción desconocida.'], 404);

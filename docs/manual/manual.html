@@ -195,6 +195,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .opciones button.incorrecta { background: var(--mal-fondo); border-color: var(--mal); color: var(--mal); }
 .explica { font-size: .9rem; color: var(--tenue); margin: .6rem 0 0; }
 .marcador { font-family: var(--f-display); font-weight: 800; font-size: 1.1rem; }
+.arqueo-m { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: .4rem; }
+.arqueo-m label { display: grid; grid-template-columns: 1fr 58px; align-items: center; gap: .3rem; font-size: .85rem; background: var(--fondo); border: 1px solid var(--linea); border-radius: 8px; padding: .3rem .45rem; }
+.arqueo-m input { width: 100%; min-width: 0; padding: .3rem; border: 1px solid var(--linea); border-radius: 6px; background: var(--papel); text-align: right; }
 .mapa-roles { display: grid; gap: .7rem; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin: 1rem 0; }
 .mapa-roles button { text-align: left; background: var(--papel); border: 1px solid var(--linea); border-radius: 12px; padding: .9rem; cursor: pointer; display: grid; gap: .3rem; }
 .mapa-roles button:hover { border-color: var(--rojo); }
@@ -241,7 +244,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
     <ol class="pasos">
       <li><div>Abra la dirección de Power POS en el navegador del celular, tablet o computadora.</div></li>
       <li><div>Escriba su <b>correo</b> y <b>contraseña</b>, y toque <span class="ui">Ingresar</span>.</div></li>
-      <li><div>El cajero entra directo a la <b>Caja</b>. Gerentes y administradores entran al <b>Tablero ERP</b>.</div></li>
+      <li><div>El cajero entra directo a <b>Vender</b> y abre su turno con el fondo inicial. Gerentes y administradores entran al <b>Tablero ERP</b>.</div></li>
       <li><div>Si su usuario no tiene tienda fija (administrador), cambie de tienda con el selector de la barra superior. Todo lo que facture se registra en la tienda seleccionada.</div></li>
     </ol>
     <div class="nota info"><strong>Su progreso se guarda en este navegador.</strong>Marque cada tema como aprendido al final de la sección; la barra superior muestra su avance.</div>
@@ -317,6 +320,51 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
     <p>Datos del emisor y RTN, <b>CAI</b>, número <code>001-001-01-00000001</code>, fecha, cliente, detalle con opciones del combo, descuentos y rebajas, importe exonerado, exento, gravado 15 % y 18 %, ISV, total, <b>total en letras</b>, rango autorizado y fecha límite de emisión.</p>
     <div class="nota info"><strong>Los números no se repiten ni se saltan.</strong>Aunque dos cajas facturen al mismo segundo, cada una recibe un número distinto. Si la venta falla, el número no se consume.</div>
     <div class="pie-seccion"><button class="aprendido" data-hecho="facturar" aria-pressed="false">Marcar como aprendido</button></div>
+  </section>
+
+  <section class="seccion" id="turno" data-grupo="Caja" data-roles="cajero gerente admin" data-titulo="Abrir y cerrar turno">
+    <div class="ceja">Caja · Cajero</div>
+    <h2>Abrir y cerrar el turno de caja</h2>
+    <p class="lead">Cada cajero trabaja con su propio turno. Sin turno abierto la pantalla <b>Vender</b> no deja facturar.</p>
+    <h3>Al iniciar</h3>
+    <ol class="pasos">
+      <li><div>Cuente el efectivo de cambio que le entregan (fondo inicial).</div></li>
+      <li><div>En <span class="ui">Vender</span> o en <span class="ui">Turno</span>, escriba el fondo y toque <span class="ui">Abrir turno</span>.</div></li>
+    </ol>
+    <h3>Durante el turno</h3>
+    <ol class="pasos">
+      <li><div>Al cobrar en efectivo escriba lo que entrega el cliente en <span class="ui">Efectivo recibido</span>: el sistema muestra el <b>cambio</b> y no deja facturar si no alcanza.</div></li>
+      <li><div>En <b>pago mixto</b> escriba solo la parte en efectivo; el resto se cobra con tarjeta.</div></li>
+      <li><div>Si sale dinero de la caja (remesa a bóveda, compra menor) regístrelo en <span class="ui">Turno</span> → <span class="ui">Retiro</span> con su motivo. Si le traen más cambio, es un <span class="ui">Ingreso</span>.</div></li>
+      <li><div><span class="ui">Corte X</span> imprime un reporte parcial sin cerrar el turno.</div></li>
+    </ol>
+    <h3>Al terminar: arqueo y cierre</h3>
+    <ol class="pasos">
+      <li><div>Toque <span class="ui">Cerrar turno y arquear</span> y cuente billetes y monedas por denominación.</div></li>
+      <li><div>El sistema compara lo contado con el <b>efectivo esperado</b> = fondo + ventas en efectivo + ingresos − retiros.</div></li>
+      <li><div>Si hay faltante o sobrante, <b>escriba la explicación</b>: sin nota no se puede cerrar.</div></li>
+      <li><div>Imprima el <b>Reporte Z</b>, fírmelo y entréguelo con el efectivo a su supervisor.</div></li>
+    </ol>
+
+    <div class="banco">
+      <div class="banco-cab"><b>Practique el arqueo</b><small>Turno de ejemplo</small></div>
+      <div class="banco-cuerpo dos">
+        <div style="display:grid;gap:.6rem;min-width:0">
+          <div class="fila">
+            <label class="campo">Fondo inicial (L) <input id="aq-fondo" inputmode="decimal" value="1000"></label>
+            <label class="campo">Ventas en efectivo (L) <input id="aq-ventas" inputmode="decimal" value="3845.50"></label>
+          </div>
+          <div class="fila">
+            <label class="campo">Ingresos (L) <input id="aq-ing" inputmode="decimal" value="0"></label>
+            <label class="campo">Retiros (L) <input id="aq-ret" inputmode="decimal" value="2000"></label>
+          </div>
+          <div class="arqueo-m" id="aq-denoms"></div>
+        </div>
+        <div class="salida" id="aq-salida" aria-live="polite"></div>
+      </div>
+    </div>
+    <div class="nota cuidado"><strong>Un turno por persona.</strong>No venda con el usuario de otro cajero: el faltante se cargaría a su turno. El gerente puede cerrar un turno olvidado desde el historial.</div>
+    <div class="pie-seccion"><button class="aprendido" data-hecho="turno" aria-pressed="false">Marcar como aprendido</button></div>
   </section>
 
   <section class="seccion" id="simulador" data-grupo="Practicar" data-roles="cajero gerente admin" data-titulo="Simulador de caja">
@@ -414,6 +462,70 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
     <div class="pie-seccion"><button class="aprendido" data-hecho="promos" aria-pressed="false">Marcar como aprendido</button></div>
   </section>
 
+  <section class="seccion" id="productos" data-grupo="Gestión" data-roles="gerente admin" data-titulo="Productos y carga masiva">
+    <div class="ceja">Gestión · Gerente</div>
+    <h2>Productos y carga masiva</h2>
+    <p class="lead">Cree productos uno a uno o cargue todo el menú desde Excel.</p>
+    <ol class="pasos">
+      <li><div>En <span class="ui">Productos</span> llene SKU (código único), nombre, categoría, precio <b>con ISV</b> e impuesto. Puede crear una categoría nueva desde la misma lista.</div></li>
+      <li><div>Desmarque <b>Se vende solo</b> si el producto solo va dentro de combos (por ejemplo, papas grandes).</div></li>
+      <li><div>Desmarque <b>Controla inventario</b> en lo que no se cuenta (salsas, servilletas).</div></li>
+      <li><div>Un producto nuevo empieza con existencia 0: cárguela con una <b>compra</b>.</div></li>
+    </ol>
+    <h3>Desde Excel</h3>
+    <p>Guarde la hoja como CSV con estas columnas. Excel en español guarda con <code>;</code> y también se acepta.</p>
+    <div class="tabla-envoltura"><table>
+      <thead><tr><th>sku</th><th>nombre</th><th>categoria</th><th class="num">precio</th><th>impuesto</th><th>vendible_solo</th><th>controla_stock</th><th class="num">minimo</th></tr></thead>
+      <tbody><tr><td>HAM-BBQ</td><td>Hamburguesa BBQ</td><td>Hamburguesas</td><td class="num">145.00</td><td>G15</td><td>1</td><td>1</td><td class="num">20</td></tr>
+      <tr><td>CER-IMP</td><td>Cerveza Importada</td><td>Cervezas</td><td class="num">75.00</td><td>G18</td><td>1</td><td>1</td><td class="num">24</td></tr></tbody>
+    </table></div>
+    <div class="nota info"><strong>Todo o nada.</strong>Si el SKU existe, se actualiza; si no, se crea. Si una fila tiene error, no se importa ninguna y se le indica la fila a corregir.</div>
+    <div class="pie-seccion"><button class="aprendido" data-hecho="productos" aria-pressed="false">Marcar como aprendido</button></div>
+  </section>
+
+  <section class="seccion" id="compras" data-grupo="Gestión" data-roles="gerente admin" data-titulo="Registrar compras">
+    <div class="ceja">Gestión · Gerente</div>
+    <h2>Registrar compras a proveedores</h2>
+    <p class="lead">La mercadería entra al inventario solo cuando la compra se <b>recibe</b>.</p>
+    <ol class="pasos">
+      <li><div>En <span class="ui">Compras</span> → <span class="ui">+ Nueva compra</span>, elija el proveedor y escriba el <b>número de su factura</b> y la fecha.</div></li>
+      <li><div>Agregue cada producto con cantidad y <b>costo unitario sin ISV</b>. Al elegir el producto se sugiere su último costo.</div></li>
+      <li><div>Compare el <b>Total factura</b> con el papel del proveedor.</div></li>
+      <li><div>Use <span class="ui">Guardar borrador</span> si la mercadería aún no llega, o <span class="ui">Guardar y recibir mercadería</span> si ya la contó.</div></li>
+    </ol>
+    <div class="tabla-envoltura"><table>
+      <thead><tr><th>Estado</th><th>Inventario</th><th>Se puede…</th></tr></thead>
+      <tbody>
+        <tr><td>Borrador</td><td>No cambia</td><td>Recibir o anular</td></tr>
+        <tr><td>Recibida</td><td>Suma existencia y recalcula el costo promedio</td><td>Nada: se corrige con un ajuste de inventario</td></tr>
+        <tr><td>Anulada</td><td>No cambia</td><td>El número de factura queda libre</td></tr>
+      </tbody>
+    </table></div>
+    <div class="nota cuidado"><strong>La misma factura no entra dos veces.</strong>El sistema rechaza un número de factura que ya registró ese proveedor.</div>
+    <div class="pie-seccion"><button class="aprendido" data-hecho="compras" aria-pressed="false">Marcar como aprendido</button></div>
+  </section>
+
+  <section class="seccion" id="inventario" data-grupo="Gestión" data-roles="gerente admin" data-titulo="Inventario y kárdex">
+    <div class="ceja">Gestión · Gerente</div>
+    <h2>Inventario y kárdex</h2>
+    <p class="lead">La existencia se mueve sola con cada venta y compra. Usted solo registra lo que el sistema no puede saber.</p>
+    <div class="tabla-envoltura"><table>
+      <thead><tr><th>Situación</th><th>Qué hacer</th><th>En el kárdex</th></tr></thead>
+      <tbody>
+        <tr><td>El conteo físico no cuadra</td><td>Ajuste por conteo, sumar o restar, con motivo</td><td>AJUSTE</td></tr>
+        <tr><td>Producto vencido o dañado</td><td>Merma con motivo</td><td>MERMA</td></tr>
+        <tr><td>Enviar producto a otra tienda</td><td>Traslado</td><td>Salida aquí, entrada allá</td></tr>
+        <tr><td>Avisar antes de que se acabe</td><td>Ajuste el <b>mínimo</b> en la tabla y presione Enter</td><td>Aparece "Reponer"</td></tr>
+      </tbody>
+    </table></div>
+    <h3>Costo promedio</h3>
+    <p>Cada compra recalcula el costo: <code>(existencia × costo actual + cantidad × costo nuevo) ÷ (existencia + cantidad)</code>.
+      Ejemplo: hay 100 a L 30 y entran 50 a L 36 → (3,000 + 1,800) ÷ 150 = <b>L 32.00</b>.</p>
+    <p>Toque el nombre de un producto para ver su <b>kárdex</b>: cada movimiento con fecha, usuario, referencia (factura o compra) y saldo.</p>
+    <div class="nota info"><strong>Las ventas no se bloquean por existencia.</strong>Si la existencia queda en negativo (en rojo), falta registrar una compra o hay que ajustar.</div>
+    <div class="pie-seccion"><button class="aprendido" data-hecho="inventario" aria-pressed="false">Marcar como aprendido</button></div>
+  </section>
+
   <section class="seccion" id="tablero" data-grupo="Gestión" data-roles="gerente admin" data-titulo="Leer el tablero ERP">
     <div class="ceja">Gestión · Gerente y Admin</div>
     <h2>Leer el tablero ERP</h2>
@@ -503,6 +615,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
           <tr><td>Combos y promociones</td><td>—</td><td>✔</td><td>✔</td></tr>
           <tr><td>Descuentos de ley</td><td>—</td><td>—</td><td>✔</td></tr>
           <tr><td>CAI</td><td>—</td><td>—</td><td>✔</td></tr>
+          <tr><td>Turno de caja</td><td>✔ el suyo</td><td>✔ y cierra los de su tienda</td><td>✔ todos</td></tr>
+          <tr><td>Productos, compras e inventario</td><td>—</td><td>✔ su tienda</td><td>✔ todas</td></tr>
           <tr><td>Tablero ERP</td><td>—</td><td>✔ su tienda</td><td>✔ todas</td></tr>
         </tbody>
       </table>
@@ -544,7 +658,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
   <section class="seccion" id="evaluacion" data-grupo="Ayuda" data-roles="cajero gerente admin" data-titulo="Autoevaluación">
     <div class="ceja">Practicar</div>
     <h2>Autoevaluación</h2>
-    <p class="lead">Cinco preguntas para comprobar lo aprendido. <span class="marcador" id="quiz-marcador"></span></p>
+    <p class="lead">Siete preguntas para comprobar lo aprendido. <span class="marcador" id="quiz-marcador"></span></p>
     <div id="quiz"></div>
     <button class="btn" id="quiz-reiniciar">Reiniciar evaluación</button>
     <div class="pie-seccion"><button class="aprendido" data-hecho="evaluacion" aria-pressed="false">Marcar como aprendido</button></div>
@@ -882,6 +996,30 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
   }
   ['#cai-cai', '#cai-est', '#cai-pe', '#cai-ini', '#cai-fin', '#cai-act', '#cai-fecha'].forEach((s) => $(s).addEventListener('input', validarCai));
 
+  // ================= Simulador de arqueo =================
+  const DENOMS = [50000, 20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10];
+  const ejemploConteo = { 50000: 4, 20000: 3, 10000: 2, 2000: 1, 1000: 1, 500: 1, 50: 1 };   // L 2,835.50: faltante de L 10
+  $('#aq-denoms').innerHTML = DENOMS.map((d) => `<label>${d >= 100 ? 'L ' + d / 100 : d + ' ctv'}
+    <input type="number" min="0" inputmode="numeric" data-den="${d}" value="${ejemploConteo[d] || ''}" placeholder="0" aria-label="Cantidad de ${d >= 100 ? 'L ' + d / 100 : d + ' centavos'}"></label>`).join('');
+  const cent = (s) => Math.round((parseFloat(String($(s).value).replace(/,/g, '')) || 0) * 100);
+  function arqueo() {
+    const esperado = cent('#aq-fondo') + cent('#aq-ventas') + cent('#aq-ing') - cent('#aq-ret');
+    const contado = $$('#aq-denoms [data-den]').reduce((t, i) => t + Math.max(0, Math.floor(+i.value || 0)) * +i.dataset.den, 0);
+    const dif = contado - esperado;
+    const est = dif === 0 ? ['ok', 'Cuadra: puede cerrar'] : [dif < 0 ? 'mal' : 'alerta', (dif < 0 ? 'Faltante de ' : 'Sobrante de ') + lps(Math.abs(dif)) + ': escriba la nota'];
+    $('#aq-salida').innerHTML = `
+      <div class="tabla-envoltura" style="margin:0"><table><tbody>
+        <tr><td>Fondo inicial</td><td class="num">${lps(cent('#aq-fondo'))}</td></tr>
+        <tr><td>+ Ventas en efectivo</td><td class="num">${lps(cent('#aq-ventas'))}</td></tr>
+        <tr><td>+ Ingresos</td><td class="num">${lps(cent('#aq-ing'))}</td></tr>
+        <tr><td>− Retiros</td><td class="num">${lps(cent('#aq-ret'))}</td></tr>
+        <tr><th scope="row">Esperado</th><td class="num"><b>${lps(esperado)}</b></td></tr>
+        <tr><th scope="row">Contado</th><td class="num"><b>${lps(contado)}</b></td></tr>
+      </tbody></table></div>
+      <span class="estado ${est[0]}">${est[1]}</span>`;
+  }
+  ['#aq-fondo', '#aq-ventas', '#aq-ing', '#aq-ret', '#aq-denoms'].forEach((s) => $(s).addEventListener('input', arqueo));
+
   // ================= Solución de problemas =================
   const PROBLEMAS = [
     ['No hay CAI vigente con números disponibles para esta tienda. No se puede facturar.', 'Caja · al facturar', 'El CAI de la tienda venció o se acabó el rango. Avise al administrador: debe registrar el CAI nuevo en la pantalla CAI. Mientras tanto no se pueden emitir facturas.'],
@@ -890,6 +1028,17 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
     ['Seleccione 1 opción(es) en "Bebida" del Combo Clásico.', 'Caja · al cotizar', 'Falta completar un grupo del combo. Quite la línea y vuelva a armar el combo eligiendo todas las partes.'],
     ['Hay opciones que no pertenecen al combo.', 'Caja · al cotizar', 'El combo cambió mientras la orden estaba abierta. Quite la línea y ármelo de nuevo.'],
     ['Producto no disponible. / Combo no disponible.', 'Caja', 'Un gerente desactivó el artículo. Recargue la página para actualizar el menú.'],
+    ['Abra su turno de caja antes de facturar.', 'Vender', 'Abra el turno con el fondo inicial en Vender o en Turno.'],
+    ['Su turno de caja no está abierto en esta tienda.', 'Vender', 'Tiene un turno abierto en otra tienda. Cambie de tienda en la barra superior o cierre ese turno.'],
+    ['Ya tiene un turno abierto.', 'Turno', 'Solo puede haber un turno abierto por usuario. Ciérrelo antes de abrir otro.'],
+    ['El efectivo recibido no cubre el total.', 'Vender', 'Revise el monto que entregó el cliente, o cambie la forma de pago a mixto.'],
+    ['En pago mixto indique la parte en efectivo', 'Vender', 'Escriba cuánto pagó en efectivo: más que cero y menos que el total.'],
+    ['Hay un faltante de L … Explique la diferencia en las notas.', 'Turno · cierre', 'Recuente. Si la diferencia es real, escriba la causa en Notas para poder cerrar.'],
+    ['No puede retirar más efectivo del que hay en caja.', 'Turno', 'El retiro supera el efectivo esperado. Revise el monto.'],
+    ['La factura … de este proveedor ya está registrada.', 'Compras', 'Esa factura ya se cargó. Búsquela en la lista de compras.'],
+    ['Solo se anulan compras en borrador.', 'Compras', 'Una compra recibida no se anula: corrija con un ajuste de inventario.'],
+    ['No hay existencia suficiente.', 'Inventario', 'La merma o el traslado supera la existencia. Haga primero un ajuste por conteo si la existencia está mal.'],
+    ['No se importó nada. Corrija y vuelva a cargar', 'Productos · CSV', 'El mensaje indica las filas con error (SKU, precio, impuesto o categoría). Corrija el archivo y cárguelo otra vez.'],
     ['La orden está vacía.', 'Caja · al facturar', 'Agregue al menos un artículo antes de facturar.'],
     ['Sesión expirada.', 'Cualquier pantalla', 'Su sesión se cerró. Vuelva a ingresar con su correo y contraseña; la orden en pantalla se pierde.'],
     ['Token de seguridad inválido. Recargue la página.', 'Formularios', 'La página quedó abierta mucho tiempo o se abrió en otra pestaña. Recargue y repita la acción.'],
@@ -922,6 +1071,12 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
     ['¿Cuál es un número de factura válido?',
       ['001-001-01-00000125', '1-1-1-125', '001-01-00000125'], 0,
       'Formato: establecimiento (3) - punto de emisión (3) - tipo de documento (2) - correlativo (8).'],
+    ['Al cerrar, el sistema espera L 2,845.50 y usted cuenta L 2,835.50. ¿Qué pasa?',
+      ['Cierra igual y nadie se entera', 'Debe explicar el faltante de L 10 en las notas para poder cerrar', 'El sistema ajusta las ventas'], 1,
+      'Toda diferencia queda registrada en el reporte Z y en el tablero ERP; sin nota no se cierra.'],
+    ['Llegó la factura del proveedor pero la mercadería viene mañana. ¿Qué hace?',
+      ['Guardar la compra como borrador y recibirla cuando llegue', 'Guardar y recibir hoy', 'Esperar y no registrar nada'], 0,
+      'El borrador no mueve inventario; al recibir se suma la existencia que de verdad entró.'],
     ['El cliente no pide factura a nombre de empresa. ¿Qué pone en RTN?',
       ['El RTN de la tienda', 'Nada: sale como CONSUMIDOR FINAL', '00000000000000'], 1,
       'El RTN del cliente es opcional; sin él la factura se emite a CONSUMIDOR FINAL.'],
@@ -997,7 +1152,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
     if (!(rol === 'todos' || s.dataset.roles.split(' ').includes(rol))) rol = 'todos';
   }
 
-  pintarCatalogo(); pintarRecibo(); pintarExplorador(); validarCai(); pintarProblemas(); pintarQuiz(); pintarIndice();
+  pintarCatalogo(); pintarRecibo(); pintarExplorador(); arqueo(); validarCai(); pintarProblemas(); pintarQuiz(); pintarIndice();
   if (ancla && document.getElementById(ancla)) document.getElementById(ancla).scrollIntoView();
 })();
 </script>

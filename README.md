@@ -14,6 +14,10 @@ Hecha en **PHP + MySQL** y responsive (pensada primero para el teléfono).
 |---|---|---|---|
 | ![](docs/capturas/movil-1-pos.png) | ![](docs/capturas/movil-2-combo.png) | ![](docs/capturas/movil-3-orden.png) | ![](docs/capturas/movil-4-erp.png) |
 
+| Abrir turno | Arqueo | Cierre Z | Compra | Inventario y kárdex |
+|---|---|---|---|---|
+| ![](docs/capturas/movil-5-abrir-turno.png) | ![](docs/capturas/movil-6-arqueo.png) | ![](docs/capturas/movil-7-cierre-z.png) | ![](docs/capturas/escritorio-compra.png) | ![](docs/capturas/escritorio-inventario-kardex.png) |
+
 ## Instalación
 
 Requisitos: PHP 8.2+ con `pdo_mysql`, y MySQL 8 o MariaDB 10.6+.
@@ -26,6 +30,7 @@ php -S localhost:8080 -t public                # o apunte Apache/Nginx a /public
 ```
 
 Ingrese en http://localhost:8080 con **admin@power.hn / Power2026!** (cajero: `caja1@power.hn`, misma clave).
+Antes de vender, cada cajero **abre su turno** con el fondo inicial.
 **Cambie estas claves antes de producción.**
 
 También puede configurar la BD con las variables de entorno `DB_DSN`, `DB_USER` y `DB_PASS`.
@@ -33,7 +38,16 @@ También puede configurar la BD con las variables de entorno `DB_DSN`, `DB_USER`
 ## Pruebas
 
 ```bash
-php tests/run.php   # motor de precios, promos, ley, ISV y montos en letras
+php tests/run.php          # motor de precios, promos, ley, ISV y montos en letras (sin BD)
+
+# Integración: caja, ventas, compras, inventario y CSV (use una BD de PRUEBA recién cargada)
+DB_DSN='mysql:host=127.0.0.1;dbname=power_pos;charset=utf8mb4' DB_USER=root DB_PASS= php tests/integracion.php
+```
+
+### Actualizar una instalación existente
+
+```bash
+mysql -u root -p < database/migraciones/002_caja_compras_inventario.sql
 ```
 
 ## Módulos
@@ -45,7 +59,11 @@ php tests/run.php   # motor de precios, promos, ley, ISV y montos en letras
 | Promociones | Admin, Gerente | Mix & match, NxM, %, compra X lleva Y, por día, hora y tienda |
 | Descuentos de ley | Admin | % y topes parametrizables, acumulable, exento ISV y reporte del mes |
 | CAI | Admin | Registro de CAI por tienda y punto de emisión, consumo del rango y alertas |
-| Tablero ERP | Admin, Gerente | KPIs consolidados, ranking de tiendas, top de artículos e inventario |
+| Turno de caja | Todos | Apertura con fondo, retiros e ingresos, corte X, arqueo por denominación, cierre Z |
+| Productos | Admin, Gerente | Alta y edición, carga masiva CSV o Excel |
+| Compras | Admin, Gerente | Proveedores, compras en borrador o recibidas, entrada a inventario con costo |
+| Inventario | Admin, Gerente | Existencias, mínimos, ajustes, mermas, traslados y kárdex |
+| Tablero ERP | Admin, Gerente | KPIs consolidados, compras, diferencias de caja, ranking, top de artículos e inventario |
 
 > ⚠️ Los porcentajes de los descuentos de ley y el tratamiento del ISV vienen como **valores por defecto parametrizables**.
 > Valídelos con su asesor legal/contable y la normativa vigente de la SAR antes de usar el sistema en producción.
