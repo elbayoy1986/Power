@@ -5,6 +5,9 @@ descuentos de ley (tercera edad, cuarta edad, discapacidad), **facturación con 
 Hecha en **PHP + MySQL** y responsive (pensada primero para el teléfono).
 
 📄 Propuesta completa y análisis de procesos: [`docs/PROPUESTA.md`](docs/PROPUESTA.md)
+🏗️ Arquitectura, diagrama entidad-relación, flujos y seguridad: [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md)
+
+![Arquitectura](docs/diagramas/1-arquitectura.png)
 
 | Caja (móvil) | Armar combo | Orden + descuento de ley | Tablero ERP |
 |---|---|---|---|

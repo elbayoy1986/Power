@@ -109,6 +109,8 @@ Reglas implementadas:
 
 ## 4. Arquitectura
 
+> Detalle completo con diagramas (arquitectura, entidad-relación, secuencia de facturación, motor de precios, ciclo del CAI y despliegue): **[ARQUITECTURA.md](ARQUITECTURA.md)**
+
 ```
 public/           ← raíz web (único directorio expuesto)
   index.php       ← router de pantallas + login + CSRF
