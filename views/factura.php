@@ -10,6 +10,12 @@ if (!$v || ($usuario['tienda_id'] !== null && (int) $v['tienda_id'] !== $usuario
     exit('Factura no encontrada.');
 }
 $em = $v['empresa'];
+$mesa = null;
+if ($v['cuenta_id']) {
+    $st = $db->prepare('SELECT m.nombre AS mesa, u.nombre AS mesero FROM cuentas c JOIN mesas m ON m.id = c.mesa_id JOIN usuarios u ON u.id = c.mesero_id WHERE c.id = ?');
+    $st->execute([$v['cuenta_id']]);
+    $mesa = $st->fetch() ?: null;
+}
 $fila = fn (string $t, int $c) => $c ? '<tr><td>' . e($t) . '</td><td class="num">' . lps($c) . '</td></tr>' : '';
 ?>
 <!doctype html>
@@ -35,6 +41,7 @@ $fila = fn (string $t, int $c) => $c ? '<tr><td>' . e($t) . '</td><td class="num
     Cliente: <?= e($v['cliente_nombre']) ?><br>
     RTN cliente: <?= e($v['cliente_rtn'] ?: '—') ?><br>
     Cajero: <?= e($v['cajero']) ?> · Pago: <?= e($v['forma_pago']) ?>
+    <?php if ($mesa): ?><br>Mesa: <?= e($mesa['mesa']) ?> · Mesero: <?= e($mesa['mesero']) ?><?php endif; ?>
   </p>
 
   <table class="detalle">
@@ -78,6 +85,9 @@ $fila = fn (string $t, int $c) => $c ? '<tr><td>' . e($t) . '</td><td class="num
        Fecha límite de emisión: <?= e(date('d/m/Y', strtotime($v['fecha_limite_emision']))) ?></p>
     <p class="centro">ORIGINAL: CLIENTE · COPIA: EMISOR<br>¡Gracias por su compra!</p>
   </footer>
+  <?php if ($v['propina'] > 0): ?>
+    <p class="chico centro propina-aparte">Propina voluntaria recibida: <?= lps($v['propina']) ?><br>(no forma parte de esta factura)</p>
+  <?php endif; ?>
 </article>
 <div class="no-imprimir centro"><button class="btn primario" onclick="print()">Imprimir</button></div>
 </body>

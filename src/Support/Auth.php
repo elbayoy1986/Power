@@ -32,6 +32,17 @@ final class Auth
         return true;
     }
 
+    /** Pantalla de inicio según el rol. */
+    public static function inicio(string $rol): string
+    {
+        return match ($rol) {
+            'CAJERO' => 'pos',
+            'MESERO' => 'salon',
+            'COCINA' => 'cocina',
+            default => 'erp',
+        };
+    }
+
     public static function usuario(): ?array
     {
         return $_SESSION['usuario'] ?? null;

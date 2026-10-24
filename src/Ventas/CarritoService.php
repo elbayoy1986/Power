@@ -89,7 +89,7 @@ final class CarritoService
                 }
                 if (isset($permitidas[$pid])) {
                     $o = $permitidas[$pid];
-                    $elegidas[] = ['producto_id' => $pid, 'descripcion' => $g['nombre'] . ': ' . $o['nombre'], 'recargo' => $o['recargo']];
+                    $elegidas[] = ['producto_id' => $pid, 'nombre' => $o['nombre'], 'descripcion' => $g['nombre'] . ': ' . $o['nombre'], 'recargo' => $o['recargo']];
                     $recargo += $o['recargo'];
                     unset($pendientes[$k]);
                     $enGrupo++;

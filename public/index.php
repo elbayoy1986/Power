@@ -41,9 +41,18 @@ $rutas = [
     'descuentos'   => ['vista' => 'descuentos', 'roles' => ['ADMIN']],
     'cai'          => ['vista' => 'cai', 'roles' => ['ADMIN']],
     'erp'          => ['vista' => 'erp', 'roles' => ['ADMIN', 'GERENTE']],
+    // Restaurante: salón, cuenta de mesa, cocina e impresos
+    'salon'        => ['vista' => 'salon', 'roles' => ['ADMIN', 'GERENTE', 'CAJERO', 'MESERO']],
+    'mesa'         => ['vista' => 'mesa', 'roles' => ['ADMIN', 'GERENTE', 'CAJERO', 'MESERO']],
+    'precuenta'    => ['vista' => 'precuenta', 'roles' => ['ADMIN', 'GERENTE', 'CAJERO', 'MESERO']],
+    'cocina'       => ['vista' => 'cocina', 'roles' => ['ADMIN', 'GERENTE', 'CAJERO', 'COCINA']],
+    'comanda'      => ['vista' => 'comanda', 'roles' => ['ADMIN', 'GERENTE', 'CAJERO', 'MESERO', 'COCINA']],
+    'salon_config' => ['vista' => 'salon_config', 'roles' => ['ADMIN', 'GERENTE']],
+    'personal'     => ['vista' => 'personal', 'roles' => ['ADMIN', 'GERENTE']],
 ];
 
-$p = $_GET['p'] ?? 'pos';
+// Sin página: cada rol entra a su pantalla (caja, salón, cocina o tablero)
+$p = ($_GET['p'] ?? '') ?: (Auth::usuario() ? Auth::inicio(Auth::usuario()['rol']) : 'login');
 
 if ($p === 'logout') {
     session_destroy();
@@ -60,7 +69,7 @@ if ($p === 'tienda' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     redirigir($_POST['volver'] ?? 'pos');
 }
 
-$ruta = $rutas[$p] ?? $rutas['pos'];
+$ruta = $rutas[$p] ?? $rutas[Auth::usuario() ? Auth::inicio(Auth::usuario()['rol']) : 'login'];
 $usuario = $ruta['roles'] ? Auth::requerir($ruta['roles']) : null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $p !== 'login') {
     Auth::verificarCsrf($_POST['csrf'] ?? null);

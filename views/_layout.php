@@ -1,12 +1,14 @@
 <?php
 use App\Support\Auth;
 
-function layout_inicio(string $titulo, string $activo, PDO $db): void
+function layout_inicio(string $titulo, string $activo, PDO $db, string $claseBody = ''): void
 {
     $u = Auth::usuario();
     $tiendas = $db->query('SELECT id, nombre FROM tiendas WHERE activa = 1 ORDER BY id')->fetchAll();
     $menu = [
         'pos' => ['Vender', ['ADMIN', 'GERENTE', 'CAJERO']],
+        'salon' => ['Mesas', ['ADMIN', 'GERENTE', 'CAJERO', 'MESERO']],
+        'cocina' => ['Cocina', ['ADMIN', 'GERENTE', 'COCINA']],
         'caja' => ['Turno', ['ADMIN', 'GERENTE', 'CAJERO']],
         'productos' => ['Productos', ['ADMIN', 'GERENTE']],
         'combos' => ['Combos', ['ADMIN', 'GERENTE']],
@@ -15,6 +17,7 @@ function layout_inicio(string $titulo, string $activo, PDO $db): void
         'compras' => ['Compras', ['ADMIN', 'GERENTE']],
         'inventario' => ['Inventario', ['ADMIN', 'GERENTE']],
         'cai' => ['CAI', ['ADMIN']],
+        'personal' => ['Personal', ['ADMIN', 'GERENTE']],
         'erp' => ['Tablero ERP', ['ADMIN', 'GERENTE']],
     ];
     $flash = $_SESSION['flash'] ?? null;
@@ -29,9 +32,9 @@ function layout_inicio(string $titulo, string $activo, PDO $db): void
   <title><?= e($titulo) ?> · Power POS</title>
   <link rel="stylesheet" href="assets/app.css">
 </head>
-<body>
+<body class="<?= e($claseBody) ?>">
 <header class="barra">
-  <a class="marca" href="index.php?p=pos">Power<span>POS</span></a>
+  <a class="marca" href="index.php">Power<span>POS</span></a>
   <button class="menu-btn" aria-label="Menú" onclick="document.body.classList.toggle('menu-abierto')">☰</button>
   <nav class="nav">
     <?php foreach ($menu as $clave => [$texto, $roles]): if (in_array($u['rol'], $roles, true)): ?>

@@ -44,9 +44,10 @@ small, .chico { font-size: .8rem; }
 .nav a { color: #fff; text-decoration: none; padding: .55rem .4rem; border-radius: 8px; }
 .nav a.activo { background: rgb(255 255 255 / .18); font-weight: 600; }
 .selector-tienda select { width: 100%; margin: .4rem 0; color: var(--texto); background: var(--superficie); }
-@media (min-width: 1200px) {
+/* Barra horizontal solo cuando cabe el menú completo del administrador (13 opciones); antes, menú ☰ */
+@media (min-width: 1440px) {
   .menu-btn { display: none; }
-  .nav a { white-space: nowrap; padding: .45rem .5rem; font-size: .93rem; }
+  .nav a { white-space: nowrap; padding: .45rem .42rem; font-size: .9rem; }
   .nav .solo-menu { display: none; }
   .nav { display: flex; position: static; flex-direction: row; align-items: center; gap: .25rem; padding: 0; background: none; flex: 1; }
   .nav .salir { margin-left: auto; }
@@ -89,6 +90,7 @@ progress { width: 100%; accent-color: var(--primario); }
 .aviso.error { background: #fdecea; color: var(--error); border-color: #f5c6c2; }
 
 .columnas { display: grid; gap: 1rem; }
+.columnas > * { min-width: 0; }
 @media (min-width: 900px) { .columnas { grid-template-columns: 1fr 1fr; align-items: start; } }
 
 .tabla-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -111,6 +113,7 @@ progress { width: 100%; accent-color: var(--primario); }
 
 /* ---------- POS ---------- */
 .pos { display: grid; gap: 1rem; padding-bottom: 72px; }
+.catalogo { min-width: 0; } /* sin esto la fila de categorías ensancha la columna y la página se desborda en el teléfono */
 .filtros { display: flex; gap: .4rem; overflow-x: auto; padding-bottom: .5rem; scrollbar-width: none; }
 .chip { flex: none; padding: .45rem .9rem; border-radius: 999px; border: 1px solid var(--borde); background: var(--superficie); color: var(--texto); font: inherit; cursor: pointer; }
 .chip.activo { background: var(--texto); color: var(--superficie); border-color: var(--texto); }
@@ -219,4 +222,110 @@ textarea { font: inherit; color: inherit; background: var(--superficie); border:
 @media (prefers-color-scheme: dark) {
   .pill.ok { background: #183324; } .pill.alerta { background: #3a2c10; color: #f2c46b; } .pill.mal { background: #3d1a18; }
   .aviso { background: #3a2c10; color: #f2c46b; border-color: #5a4515; } .aviso.error { background: #3d1a18; color: #ff8a80; border-color: #5e2a26; }
+}
+
+/* ---------- Restaurante: salón ---------- */
+.check-linea { display: inline-flex; align-items: center; gap: .35rem; margin: 0; font-size: .9rem; white-space: nowrap; }
+.leyenda { display: flex; flex-wrap: wrap; gap: .4rem 1rem; font-size: .82rem; margin: 0 0 1rem; }
+.leyenda span { display: inline-flex; align-items: center; gap: .35rem; }
+.punto { display: inline-block; width: 12px; height: 12px; border-radius: 4px; border: 2px solid var(--borde); background: var(--superficie); }
+.punto.ocupada { background: #e8f0fe; border-color: #3b6fd8; }
+.punto.lista { background: #e3f4ea; border-color: var(--ok); }
+.punto.cobrar { background: #fff1d6; border-color: var(--acento); }
+.zona { margin-bottom: 1.25rem; }
+.zona h2 { font-size: .85rem; text-transform: uppercase; letter-spacing: .05em; color: var(--tenue); }
+.mesas { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .6rem; }
+.mesa-tarjeta { display: flex; flex-direction: column; gap: .2rem; min-height: 104px; padding: .7rem .8rem; border: 2px solid var(--borde);
+  border-radius: var(--radio); background: var(--superficie); color: var(--texto); text-decoration: none; box-shadow: var(--sombra); }
+.mesa-tarjeta:active { transform: scale(.98); }
+.mesa-num { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+.mesa-info { font-size: .8rem; color: var(--tenue); }
+.mesa-info b { color: var(--texto); }
+.mesa-flags { display: flex; flex-direction: column; font-size: .78rem; margin-top: auto; }
+.mesa-tarjeta.libre .mesa-num { color: var(--tenue); }
+.mesa-tarjeta.ocupada { border-color: #3b6fd8; background: #f4f7fe; }
+.mesa-tarjeta.lista { border-color: var(--ok); background: #effaf3; }
+.mesa-tarjeta.lista .mesa-flags b { color: var(--ok); }
+.mesa-tarjeta.cobrar { border-color: var(--acento); background: #fff8ea; }
+.mesa-tarjeta.cobrar .mesa-flags b { color: #8a5a00; }
+
+/* ---------- Restaurante: cuenta de mesa ---------- */
+.subtitulo { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--tenue); margin: 1rem 0 .25rem; }
+.orden-cab h2 { margin: 0; }
+.orden-cab p { margin: .1rem 0 0; }
+.volver { text-decoration: none; margin-right: .25rem; }
+.nota { color: #8a5a00; font-style: normal; }
+.ronda { list-style: none; font-size: .75rem; color: var(--tenue); padding: .6rem 0 .1rem; border-bottom: 1px solid var(--borde); }
+.linea.anulada .linea-info { text-decoration: line-through; opacity: .6; }
+.linea.anulada .linea-info small.mal-txt { text-decoration: none; }
+.pill.neutro { background: var(--fondo); color: var(--tenue); border: 1px solid var(--borde); }
+.listo-servir { display: flex; justify-content: space-between; align-items: center; gap: .5rem; background: #e3f4ea; color: var(--ok); border-color: #b8e2c8; }
+.acciones-mesa { display: flex; flex-wrap: wrap; gap: .5rem; margin: .75rem 0; }
+.acciones-mesa .btn { flex: 1 1 auto; }
+.cuerpo-dialogo { overflow-y: auto; padding: .5rem 1rem; }
+.dialogo.ancho { width: min(680px, 100vw); }
+.linea-cobro { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: .1rem .5rem; padding: .4rem 0; border-bottom: 1px dashed var(--borde); list-style: none; }
+.linea-cobro > label { margin: 0; display: flex; gap: .45rem; align-items: flex-start; }
+.linea-cobro .benef { grid-column: 1 / -1; margin: 0 0 0 1.8rem; }
+.linea-cobro.todos { border-bottom: 1px solid var(--borde); }
+.propina { margin: .25rem 0 0; }
+.propina legend { font-weight: 600; font-size: .9rem; }
+.chips-propina { display: flex; flex-wrap: wrap; gap: .35rem; align-self: center; flex-basis: 100%; }
+.chips-propina .chip { padding: .3rem .75rem; }
+
+/* ---------- Restaurante: pantalla de cocina (KDS) ---------- */
+.pantalla-cocina .contenido { max-width: none; }
+.cocina-cab { margin-bottom: .75rem; }
+.cocina-cab > .fila { align-items: center; justify-content: flex-end; gap: .5rem 1rem; }
+.cocina-cab .filtros { padding-bottom: 0; }
+a.chip { text-decoration: none; }
+.kds { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: .75rem; align-items: start; }
+.vacio-kds { grid-column: 1 / -1; text-align: center; font-size: 1.2rem; padding: 3rem 0; }
+.comanda { background: var(--superficie); border: 2px solid var(--borde); border-top: 8px solid #3b6fd8; border-radius: var(--radio); box-shadow: var(--sombra); display: flex; flex-direction: column; }
+.comanda.atento { border-top-color: var(--acento); }
+.comanda.tarde { border-top-color: var(--error); }
+.comanda.anulacion { border-color: var(--error); background: #fdecea; }
+.comanda header { display: grid; grid-template-columns: 1fr auto; padding: .6rem .75rem .4rem; border-bottom: 1px solid var(--borde); }
+.comanda .ref { font-size: 1.25rem; }
+.comanda .reloj { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.1rem; }
+.comanda.atento .reloj { color: #8a5a00; }
+.comanda.tarde .reloj { color: var(--error); }
+.comanda header small { grid-column: 1 / -1; color: var(--tenue); }
+.comanda ul { list-style: none; margin: 0; padding: .25rem .75rem; }
+.comanda li { display: flex; gap: .5rem; padding: .5rem 0; border-bottom: 1px dashed var(--borde); font-size: 1.05rem; cursor: pointer; }
+.comanda li:last-child { border-bottom: 0; }
+.comanda li span { display: flex; flex-direction: column; }
+.comanda li small { font-size: .85rem; color: var(--tenue); }
+.comanda li .nota { font-weight: 700; font-size: .95rem; }
+.comanda li.listo { opacity: .45; text-decoration: line-through; }
+.comanda li.anulado { opacity: .5; text-decoration: line-through; cursor: default; }
+.comanda.anulacion li { cursor: default; }
+.comanda footer { display: flex; gap: .5rem; padding: .5rem .75rem .75rem; margin-top: auto; }
+.comanda footer .primario { flex: 1; min-height: 48px; font-size: 1.05rem; }
+.recientes { margin-top: 1.5rem; }
+.recientes h2 { font-size: .85rem; text-transform: uppercase; letter-spacing: .05em; color: var(--tenue); }
+.recientes-lista { display: grid; gap: .25rem; }
+.reciente { display: grid; grid-template-columns: 1fr auto auto; gap: .75rem; align-items: center; padding: .35rem .6rem; background: var(--superficie); border: 1px solid var(--borde); border-radius: 8px; font-size: .9rem; }
+.oculto-impresion { position: absolute; width: 0; height: 0; border: 0; visibility: hidden; }
+
+/* Comanda impresa: letra grande para leer de lejos en cocina */
+.ticket-comanda h1 { font-size: 22px; margin: 2px 0; }
+.ticket-comanda .estacion { font-size: 15px; font-weight: 800; margin: 0; letter-spacing: .05em; }
+.ticket-comanda td { font-size: 15px; padding: 4px 0; border-bottom: 1px dashed #000; }
+.ticket-comanda td.cant { width: 34px; font-weight: 800; }
+.ticket-comanda tr.tachado td { text-decoration: line-through; }
+.propina-aparte { border-top: 1px dashed #000; padding-top: 6px; }
+
+/* Formularios dentro de tablas (configuración) */
+.en-tabla { flex-wrap: nowrap; gap: .4rem; }
+.en-tabla input { min-height: 34px; padding: .25rem .45rem; }
+.en-tabla .btn { min-height: 34px; padding: .25rem .6rem; }
+
+@media (prefers-color-scheme: dark) {
+  .punto.ocupada, .mesa-tarjeta.ocupada { background: #18233a; }
+  .punto.lista, .mesa-tarjeta.lista, .listo-servir { background: #183324; }
+  .punto.cobrar, .mesa-tarjeta.cobrar { background: #3a2c10; }
+  .mesa-tarjeta.cobrar .mesa-flags b, .nota, .comanda.atento .reloj { color: #f2c46b; }
+  .listo-servir { border-color: #24543a; color: #7fd6a0; }
+  .comanda.anulacion { background: #3d1a18; }
 }

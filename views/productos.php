@@ -39,6 +39,7 @@ $st = $db->prepare(
 $st->execute([$buscar, "%$buscar%", "%$buscar%"]);
 $productos = $st->fetchAll();
 $categorias = $db->query('SELECT * FROM categorias ORDER BY orden')->fetchAll();
+$estaciones = $db->query('SELECT id, nombre FROM estaciones WHERE activa = 1 ORDER BY orden, id')->fetchAll();
 
 $editar = null;
 if (!empty($_GET['editar'])) {
@@ -49,7 +50,7 @@ if (!empty($_GET['editar'])) {
 $f = $_SESSION['form_producto'] ?? ($editar ? [
     'id' => $editar['id'], 'sku' => $editar['sku'], 'nombre' => $editar['nombre'], 'categoria_id' => $editar['categoria_id'],
     'precio' => number_format($editar['precio_centavos'] / 100, 2, '.', ''), 'impuesto' => $editar['tipo_impuesto'],
-    'vendible_solo' => $editar['vendible_solo'], 'controla_stock' => $editar['controla_stock'],
+    'vendible_solo' => $editar['vendible_solo'], 'controla_stock' => $editar['controla_stock'], 'estacion_id' => $editar['estacion_id'],
 ] : ['vendible_solo' => 1, 'controla_stock' => 1]);
 unset($_SESSION['form_producto']);
 $imp = ['G15' => 'ISV 15%', 'G18' => 'ISV 18%', 'EXE' => 'Exento'];
@@ -110,6 +111,14 @@ layout_inicio('Productos', 'productos', $db);
           </label>
         </div>
         <label id="cat-nueva" hidden>Nombre de la nueva categoría <input name="categoria_nueva" id="prod-cat-nueva"></label>
+        <?php if ($estaciones): ?>
+          <label>Se prepara en
+            <select name="estacion_id" id="prod-estacion">
+              <option value="">— La estación de su categoría —</option>
+              <?php foreach ($estaciones as $est): ?><option value="<?= (int) $est['id'] ?>" <?= (string) ($f['estacion_id'] ?? '') === (string) $est['id'] ? 'selected' : '' ?>><?= e($est['nombre']) ?></option><?php endforeach; ?>
+            </select>
+          </label>
+        <?php endif; ?>
         <fieldset class="chips">
           <label><input type="hidden" name="vendible_solo" value="0"><input type="checkbox" name="vendible_solo" value="1" <?= !empty($f['vendible_solo']) ? 'checked' : '' ?>> Se vende solo (si no, solo dentro de combos)</label>
           <label><input type="hidden" name="controla_stock" value="0"><input type="checkbox" name="controla_stock" value="1" <?= !empty($f['controla_stock']) ? 'checked' : '' ?>> Controla inventario</label>

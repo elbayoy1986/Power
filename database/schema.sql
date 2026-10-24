@@ -1,5 +1,5 @@
 -- =====================================================================
--- Power POS · Plataforma de comidas rápidas + mini ERP multi-tienda
+-- Power POS · Comidas rápidas y restaurantes (mesas y cocina) + mini ERP multi-tienda
 -- MySQL 8.0+ · utf8mb4 · Montos en CENTAVOS (INT) para evitar redondeos
 -- =====================================================================
 SET NAMES utf8mb4;
@@ -36,18 +36,33 @@ CREATE TABLE usuarios (
   nombre         VARCHAR(100) NOT NULL,
   email          VARCHAR(120) NOT NULL UNIQUE,
   password_hash  VARCHAR(255) NOT NULL,
-  rol            ENUM('ADMIN','GERENTE','CAJERO') NOT NULL DEFAULT 'CAJERO',
+  rol            ENUM('ADMIN','GERENTE','CAJERO','MESERO','COCINA') NOT NULL DEFAULT 'CAJERO'
+                 COMMENT 'MESERO = toma pedidos en mesa sin cobrar; COCINA = solo ve la pantalla de su estación',
   activo         TINYINT(1) NOT NULL DEFAULT 1,
   FOREIGN KEY (tienda_id) REFERENCES tiendas(id)
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
+-- Estaciones de preparación (Cocina, Bar, Postres...). Cada una recibe sus
+-- comandas en pantalla y/o impresora. Un producto va a la estación de su
+-- categoría, salvo que el producto indique otra.
+-- ---------------------------------------------------------------------
+CREATE TABLE estaciones (
+  id      INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  nombre  VARCHAR(60) NOT NULL UNIQUE,
+  orden   SMALLINT NOT NULL DEFAULT 0,
+  activa  TINYINT(1) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
 -- Catálogo central (precio base) + precio por tienda (opcional)
 -- ---------------------------------------------------------------------
 CREATE TABLE categorias (
-  id     INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  nombre VARCHAR(80) NOT NULL,
-  orden  SMALLINT NOT NULL DEFAULT 0
+  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  nombre      VARCHAR(80) NOT NULL,
+  orden       SMALLINT NOT NULL DEFAULT 0,
+  estacion_id INT UNSIGNED NULL COMMENT 'Dónde se prepara; NULL = primera estación activa',
+  FOREIGN KEY (estacion_id) REFERENCES estaciones(id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE productos (
@@ -60,8 +75,10 @@ CREATE TABLE productos (
                    COMMENT 'G15 = ISV 15%, G18 = ISV 18% (bebidas alcohólicas), EXE = exento',
   vendible_solo    TINYINT(1) NOT NULL DEFAULT 1 COMMENT '0 = solo como opción de combo',
   controla_stock   TINYINT(1) NOT NULL DEFAULT 1,
+  estacion_id      INT UNSIGNED NULL COMMENT 'NULL = la estación de su categoría',
   activo           TINYINT(1) NOT NULL DEFAULT 1,
-  FOREIGN KEY (categoria_id) REFERENCES categorias(id)
+  FOREIGN KEY (categoria_id) REFERENCES categorias(id),
+  FOREIGN KEY (estacion_id)  REFERENCES estaciones(id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE precios_tienda (
@@ -225,6 +242,54 @@ CREATE TABLE caja_movimientos (
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
+-- Restaurante: salón por zonas, mesas y cuentas abiertas por mesa
+-- ---------------------------------------------------------------------
+CREATE TABLE zonas (
+  id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tienda_id  INT UNSIGNED NOT NULL,
+  nombre     VARCHAR(60) NOT NULL COMMENT 'Salón, Terraza, VIP...',
+  orden      SMALLINT NOT NULL DEFAULT 0,
+  activa     TINYINT(1) NOT NULL DEFAULT 1,
+  UNIQUE KEY uq_zona (tienda_id, nombre),
+  FOREIGN KEY (tienda_id) REFERENCES tiendas(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE mesas (
+  id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tienda_id  INT UNSIGNED NOT NULL,
+  zona_id    INT UNSIGNED NOT NULL,
+  nombre     VARCHAR(20) NOT NULL COMMENT 'Ej. 12, T3, Barra 1',
+  capacidad  TINYINT UNSIGNED NOT NULL DEFAULT 4,
+  orden      SMALLINT NOT NULL DEFAULT 0,
+  activa     TINYINT(1) NOT NULL DEFAULT 1,
+  UNIQUE KEY uq_mesa (tienda_id, nombre),
+  FOREIGN KEY (tienda_id) REFERENCES tiendas(id),
+  FOREIGN KEY (zona_id)   REFERENCES zonas(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE cuentas (
+  id                BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tienda_id         INT UNSIGNED NOT NULL,
+  mesa_id           INT UNSIGNED NOT NULL,
+  mesero_id         INT UNSIGNED NOT NULL,
+  comensales        TINYINT UNSIGNED NOT NULL DEFAULT 1,
+  estado            ENUM('ABIERTA','POR_COBRAR','COBRADA','ANULADA') NOT NULL DEFAULT 'ABIERTA'
+                    COMMENT 'POR_COBRAR = el cliente pidió la cuenta',
+  abierta_en        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  cerrada_en        DATETIME NULL,
+  cerrada_por       INT UNSIGNED NULL,
+  motivo_anulacion  VARCHAR(150) NULL,
+  -- Una sola cuenta activa por mesa: vale mesa_id mientras está activa y NULL después (NULL no choca en UNIQUE)
+  mesa_activa       INT UNSIGNED GENERATED ALWAYS AS (CASE WHEN estado IN ('ABIERTA','POR_COBRAR') THEN mesa_id END) STORED,
+  UNIQUE KEY uq_mesa_activa (mesa_activa),
+  FOREIGN KEY (tienda_id)   REFERENCES tiendas(id),
+  FOREIGN KEY (mesa_id)     REFERENCES mesas(id),
+  FOREIGN KEY (mesero_id)   REFERENCES usuarios(id),
+  FOREIGN KEY (cerrada_por) REFERENCES usuarios(id),
+  INDEX idx_cuentas_tienda (tienda_id, estado)
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
 -- Ventas / facturas (snapshot inmutable de lo emitido)
 -- ---------------------------------------------------------------------
 CREATE TABLE ventas (
@@ -232,6 +297,7 @@ CREATE TABLE ventas (
   tienda_id               INT UNSIGNED NOT NULL,
   usuario_id              INT UNSIGNED NOT NULL,
   turno_id                INT UNSIGNED NULL COMMENT 'Turno de caja en que se cobró',
+  cuenta_id               BIGINT UNSIGNED NULL COMMENT 'Cuenta de mesa cobrada (NULL = venta de mostrador)',
   cai_id                  INT UNSIGNED NOT NULL,
   cai                     CHAR(37) NOT NULL,
   numero_factura          CHAR(19) NOT NULL UNIQUE,
@@ -256,10 +322,13 @@ CREATE TABLE ventas (
   total_letras            VARCHAR(255) NOT NULL,
   forma_pago              ENUM('EFECTIVO','TARJETA','TRANSFERENCIA','MIXTO') NOT NULL DEFAULT 'EFECTIVO',
   monto_efectivo          INT NOT NULL DEFAULT 0 COMMENT 'Parte del total cobrada en efectivo (arqueo)',
+  propina                 INT NOT NULL DEFAULT 0 COMMENT 'Voluntaria: fuera del total facturado y de la base del ISV',
+  propina_efectivo        INT NOT NULL DEFAULT 0 COMMENT 'Parte de la propina recibida en efectivo (arqueo)',
   estado                  ENUM('EMITIDA','ANULADA') NOT NULL DEFAULT 'EMITIDA',
   FOREIGN KEY (tienda_id)          REFERENCES tiendas(id),
   FOREIGN KEY (usuario_id)         REFERENCES usuarios(id),
   FOREIGN KEY (turno_id)           REFERENCES turnos_caja(id),
+  FOREIGN KEY (cuenta_id)          REFERENCES cuentas(id),
   FOREIGN KEY (cai_id)             REFERENCES cai(id),
   FOREIGN KEY (descuento_legal_id) REFERENCES descuentos_legales(id),
   INDEX idx_ventas_tienda_fecha (tienda_id, fecha)
@@ -288,6 +357,75 @@ CREATE TABLE venta_linea_opciones (
   descripcion     VARCHAR(150) NOT NULL,
   recargo         INT NOT NULL DEFAULT 0,
   FOREIGN KEY (venta_linea_id) REFERENCES venta_lineas(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
+-- Pedidos de mesa y comandas a cocina
+--   cuenta_items: lo que se pidió en la mesa, ronda por ronda (snapshot del nombre)
+--   comandas:     lo que recibe cada estación; un combo se reparte entre estaciones
+--                 (la hamburguesa a Cocina, el refresco a Bar)
+-- ---------------------------------------------------------------------
+CREATE TABLE cuenta_items (
+  id                BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  cuenta_id         BIGINT UNSIGNED NOT NULL,
+  ronda             SMALLINT UNSIGNED NOT NULL COMMENT '1 = primer envío a cocina, 2 = segundo...',
+  tipo              ENUM('PRODUCTO','COMBO') NOT NULL,
+  producto_id       INT UNSIGNED NULL,
+  combo_id          INT UNSIGNED NULL,
+  descripcion       VARCHAR(150) NOT NULL,
+  opciones          VARCHAR(255) NOT NULL DEFAULT '' COMMENT 'IDs de producto elegidos en el combo, separados por coma',
+  detalle           VARCHAR(255) NOT NULL DEFAULT '' COMMENT 'Opciones del combo en texto',
+  cantidad          SMALLINT UNSIGNED NOT NULL,
+  nota              VARCHAR(150) NULL COMMENT 'Sin cebolla, término medio...',
+  estado            ENUM('ACTIVO','ANULADO') NOT NULL DEFAULT 'ACTIVO',
+  venta_id          BIGINT UNSIGNED NULL COMMENT 'Factura con que se cobró; permite dividir la cuenta',
+  agregado_por      INT UNSIGNED NOT NULL,
+  agregado_en       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  anulado_por       INT UNSIGNED NULL,
+  anulado_en        DATETIME NULL,
+  motivo_anulacion  VARCHAR(150) NULL,
+  FOREIGN KEY (cuenta_id)    REFERENCES cuentas(id),
+  FOREIGN KEY (producto_id)  REFERENCES productos(id),
+  FOREIGN KEY (combo_id)     REFERENCES combos(id),
+  FOREIGN KEY (venta_id)     REFERENCES ventas(id),
+  FOREIGN KEY (agregado_por) REFERENCES usuarios(id),
+  FOREIGN KEY (anulado_por)  REFERENCES usuarios(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE comandas (
+  id            BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tienda_id     INT UNSIGNED NOT NULL,
+  estacion_id   INT UNSIGNED NOT NULL,
+  cuenta_id     BIGINT UNSIGNED NULL COMMENT 'Pedido de mesa',
+  venta_id      BIGINT UNSIGNED NULL COMMENT 'Pedido de mostrador (caja rápida)',
+  referencia    VARCHAR(60) NOT NULL COMMENT 'Mesa 5 / Mostrador 00000012',
+  tipo          ENUM('PEDIDO','ANULACION') NOT NULL DEFAULT 'PEDIDO',
+  estado        ENUM('EN_COCINA','LISTA','ENTREGADA') NOT NULL DEFAULT 'EN_COCINA',
+  enviada_por   INT UNSIGNED NOT NULL,
+  creada_en     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  lista_en      DATETIME NULL,
+  entregada_en  DATETIME NULL,
+  impresa_en    DATETIME NULL COMMENT 'La primera impresora que la toma la marca: nunca sale dos veces',
+  FOREIGN KEY (tienda_id)   REFERENCES tiendas(id),
+  FOREIGN KEY (estacion_id) REFERENCES estaciones(id),
+  FOREIGN KEY (cuenta_id)   REFERENCES cuentas(id),
+  FOREIGN KEY (venta_id)    REFERENCES ventas(id),
+  FOREIGN KEY (enviada_por) REFERENCES usuarios(id),
+  INDEX idx_comandas_pantalla (tienda_id, estado, estacion_id, creada_en)
+) ENGINE=InnoDB;
+
+CREATE TABLE comanda_items (
+  id              BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  comanda_id      BIGINT UNSIGNED NOT NULL,
+  cuenta_item_id  BIGINT UNSIGNED NULL,
+  cantidad        SMALLINT UNSIGNED NOT NULL,
+  descripcion     VARCHAR(150) NOT NULL,
+  detalle         VARCHAR(255) NOT NULL DEFAULT '' COMMENT 'Componentes del combo que prepara esta estación',
+  nota            VARCHAR(150) NULL,
+  listo           TINYINT(1) NOT NULL DEFAULT 0,
+  anulado         TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Se anuló después de enviarlo: no se prepara',
+  FOREIGN KEY (comanda_id)     REFERENCES comandas(id) ON DELETE CASCADE,
+  FOREIGN KEY (cuenta_item_id) REFERENCES cuenta_items(id)
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------

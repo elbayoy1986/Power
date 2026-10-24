@@ -30,17 +30,28 @@ final class ProductosService
             throw new DomainException("El SKU {$p['sku']} ya existe en otro producto.");
         }
         $p['categoria_id'] = $this->categoriaId($d);
+        $estacion = ($d['estacion_id'] ?? '') === '' ? null : (int) $d['estacion_id']; // NULL = la de su categoría
+        if ($estacion !== null) {
+            $st = $this->db->prepare('SELECT 1 FROM estaciones WHERE id = ?');
+            $st->execute([$estacion]);
+            if (!$st->fetchColumn()) {
+                throw new DomainException('Estación de preparación no válida.');
+            }
+        }
 
         if ($id) {
             $this->db->prepare(
                 'UPDATE productos SET categoria_id = ?, sku = ?, nombre = ?, precio_centavos = ?, tipo_impuesto = ?,
                         vendible_solo = ?, controla_stock = ? WHERE id = ?'
             )->execute([$p['categoria_id'], $p['sku'], $p['nombre'], $p['precio'], $p['impuesto'], $p['vendible_solo'], $p['controla_stock'], $id]);
+            if (array_key_exists('estacion_id', $d)) {
+                $this->db->prepare('UPDATE productos SET estacion_id = ? WHERE id = ?')->execute([$estacion, $id]);
+            }
         } else {
             $this->db->prepare(
-                'INSERT INTO productos (categoria_id, sku, nombre, precio_centavos, tipo_impuesto, vendible_solo, controla_stock)
-                 VALUES (?,?,?,?,?,?,?)'
-            )->execute([$p['categoria_id'], $p['sku'], $p['nombre'], $p['precio'], $p['impuesto'], $p['vendible_solo'], $p['controla_stock']]);
+                'INSERT INTO productos (categoria_id, sku, nombre, precio_centavos, tipo_impuesto, vendible_solo, controla_stock, estacion_id)
+                 VALUES (?,?,?,?,?,?,?,?)'
+            )->execute([$p['categoria_id'], $p['sku'], $p['nombre'], $p['precio'], $p['impuesto'], $p['vendible_solo'], $p['controla_stock'], $estacion]);
             $id = (int) $this->db->lastInsertId();
         }
         $this->inventario->asegurarFilas($id);

@@ -46,12 +46,14 @@ $em = $db->query('SELECT * FROM empresa WHERE id = 1')->fetch();
     <tr><td>Descuentos de ley</td><td class="num"><?= lps($r['ventas']['legal']) ?></td></tr>
     <tr><td>ISV incluido</td><td class="num"><?= lps($r['ventas']['isv']) ?></td></tr>
     <tr><td>Facturas anuladas</td><td class="num"><?= (int) $r['ventas']['anuladas'] ?></td></tr>
+    <?php if ($r['propinas']): ?><tr><td>Propinas (fuera de factura)</td><td class="num"><?= lps($r['propinas']) ?></td></tr><?php endif; ?>
   </table>
 
   <table class="resumen">
     <tr><td colspan="2"><b>EFECTIVO</b></td></tr>
     <tr><td>Fondo inicial</td><td class="num"><?= lps($t['fondo_inicial']) ?></td></tr>
     <tr><td>+ Ventas en efectivo</td><td class="num"><?= lps($r['efectivo_ventas']) ?></td></tr>
+    <?php if ($r['propinas_efectivo']): ?><tr><td>+ Propinas en efectivo</td><td class="num"><?= lps($r['propinas_efectivo']) ?></td></tr><?php endif; ?>
     <?php foreach ($r['movimientos'] as $m): ?>
       <tr><td><?= $m['tipo'] === 'RETIRO' ? '−' : '+' ?> <?= e($m['motivo']) ?></td><td class="num"><?= lps($m['monto']) ?></td></tr>
     <?php endforeach; ?>
@@ -62,6 +64,16 @@ $em = $db->query('SELECT * FROM empresa WHERE id = 1')->fetch();
         <td class="num"><?= lps(abs((int) $t['diferencia'])) ?></td></tr>
     <?php endif; ?>
   </table>
+
+  <?php if ($r['propinas_por_mesero']): ?>
+    <table class="resumen">
+      <tr><td colspan="2"><b>PROPINAS POR MESERO</b></td></tr>
+      <?php foreach ($r['propinas_por_mesero'] as $pm): ?>
+        <tr><td><?= e($pm['mesero']) ?> (<?= (int) $pm['facturas'] ?>)<?= $pm['efectivo'] < $pm['propina'] ? '<br><small>en efectivo ' . lps($pm['efectivo']) . '</small>' : '' ?></td>
+          <td class="num"><?= lps($pm['propina']) ?></td></tr>
+      <?php endforeach; ?>
+    </table>
+  <?php endif; ?>
 
   <?php if ($conteo): ?>
     <table class="resumen">

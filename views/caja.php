@@ -65,11 +65,13 @@ layout_inicio('Turno de caja', 'caja', $db);
         <dl class="totales">
           <dt>Fondo inicial</dt><dd><?= lps($aCerrar['fondo_inicial']) ?></dd>
           <dt>Ventas en efectivo</dt><dd><?= lps($rc['efectivo_ventas']) ?></dd>
+          <?php if ($rc['propinas_efectivo']): ?><dt>Propinas en efectivo</dt><dd><?= lps($rc['propinas_efectivo']) ?></dd><?php endif; ?>
           <dt>Ingresos de efectivo</dt><dd><?= lps($rc['ingresos']) ?></dd>
           <dt>Retiros de efectivo</dt><dd>−<?= lps($rc['retiros']) ?></dd>
           <dt class="total">Efectivo esperado</dt><dd class="total" id="esperado" data-c="<?= $rc['efectivo_esperado'] ?>"><?= lps($rc['efectivo_esperado']) ?></dd>
         </dl>
-        <p class="tenue chico">Tarjeta, transferencia y la parte no efectiva del pago mixto no se cuentan en caja; aparecen en el reporte de cierre.</p>
+        <p class="tenue chico">Tarjeta, transferencia y la parte no efectiva del pago mixto no se cuentan en caja; aparecen en el reporte de cierre.
+          Si ya entregó las propinas a los meseros, regístrelo como retiro "Pago de propinas".</p>
       </div>
       <form method="post" id="form-arqueo">
         <input type="hidden" name="csrf" value="<?= e(Auth::csrf()) ?>">
@@ -140,7 +142,7 @@ layout_inicio('Turno de caja', 'caja', $db);
     <div class="kpi"><span>Abierto desde</span><b><?= e(date('H:i', strtotime($mio['apertura']))) ?></b><small><?= e(date('d/m/Y', strtotime($mio['apertura']))) ?> · <?= e($mio['tienda']) ?></small></div>
     <div class="kpi"><span>Facturas</span><b><?= (int) $r['ventas']['facturas'] ?></b></div>
     <div class="kpi"><span>Vendido</span><b><?= lps($r['ventas']['total']) ?></b></div>
-    <div class="kpi"><span>Efectivo en caja</span><b><?= lps($r['efectivo_esperado']) ?></b><small>esperado</small></div>
+    <div class="kpi"><span>Efectivo en caja</span><b><?= lps($r['efectivo_esperado']) ?></b><small>esperado<?= $r['propinas_efectivo'] ? ' · incluye ' . lps($r['propinas_efectivo']) . ' de propinas' : '' ?></small></div>
   </div>
   <div class="columnas">
     <section class="tarjeta">

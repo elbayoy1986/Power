@@ -18,6 +18,8 @@ use Throwable;
  * - Guarda una copia inmutable (snapshot) de lo facturado y descarga inventario.
  * - Toda venta pertenece a un turno de caja abierto; la parte cobrada en efectivo
  *   alimenta el arqueo del cierre.
+ * - $alEmitir corre dentro de la misma transacción (cobro de mesa, comandas a cocina):
+ *   si falla, la factura no se emite y el correlativo no se consume.
  */
 final class FacturacionService
 {
@@ -30,8 +32,11 @@ final class FacturacionService
         $this->inventario = $inventario ?? new InventarioService($db);
     }
 
-    /** @return array{venta_id:int, total:int, cambio:int} */
-    public function emitir(int $tiendaId, int $usuarioId, int $turnoId, array $datos): array
+    /**
+     * @param ?callable(int $ventaId, array $calculo, string $numeroFactura): void $alEmitir
+     * @return array{venta_id:int, numero:string, total:int, cambio:int}
+     */
+    public function emitir(int $tiendaId, int $usuarioId, int $turnoId, array $datos, ?callable $alEmitir = null): array
     {
         $legalId = !empty($datos['descuento_legal_id']) ? (int) $datos['descuento_legal_id'] : null;
         $calculo = $this->carrito->cotizar($tiendaId, $datos['items'] ?? [], $legalId);
@@ -105,8 +110,11 @@ final class FacturacionService
                 }
             }
 
+            if ($alEmitir) {
+                $alEmitir($ventaId, $calculo, $cai['numero']);
+            }
             $this->db->commit();
-            return ['venta_id' => $ventaId, 'total' => $r['total'], 'cambio' => $cambio];
+            return ['venta_id' => $ventaId, 'numero' => $cai['numero'], 'total' => $r['total'], 'cambio' => $cambio];
         } catch (Throwable $e) {
             $this->db->rollBack();
             throw $e;

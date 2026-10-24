@@ -46,7 +46,8 @@ En la misma pantalla, junto a la base, haga clic en **Entrar a phpMyAdmin** → 
 seleccione `instalar.sql` → **Importar**. Deben aparecer las tablas (`empresa`, `tiendas`, `usuarios`, `productos`…).
 
 > `instalar.sql` no trae `CREATE DATABASE` ni `USE` porque Hostinger no los permite: la base es la que eligió en phpMyAdmin.
-> Si ya tenía instalada la versión 1, importe en su lugar `base_de_datos/actualizar_002_caja_compras_inventario.sql`.
+> Si ya tenía el sistema instalado, **no** importe `instalar.sql`. Importe en orden los `base_de_datos/actualizar_*.sql` que le
+> falten: `002` si viene de la versión 1, y `003` para agregar mesas, meseros y cocina.
 
 ## 4. Subir los archivos
 
@@ -78,7 +79,7 @@ hPanel → **Seguridad → SSL** → instale el certificado gratuito y active **
 ## 7. Entrar
 
 Abra `https://su-dominio.com` e ingrese con **admin@power.hn / Power2026!**
-(cajero: `caja1@power.hn`, misma clave).
+(misma clave: cajero `caja1@power.hn`, meseros `mesero1@power.hn` y `mesero2@power.hn`, cocina `cocina1@power.hn`).
 
 **Cambie esas claves de inmediato:** son públicas porque vienen en el repositorio.
 Los CAI de demostración son ficticios: registre los suyos en **CAI** antes de facturar.

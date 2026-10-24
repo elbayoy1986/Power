@@ -9,4 +9,7 @@ return [
     // Alertas de CAI en el tablero
     'cai_alerta_facturas' => 200, // avisar cuando queden menos de N números
     'cai_alerta_dias' => 30,      // avisar cuando falten menos de N días para la fecha límite
+    // Restaurante
+    'propina_sugerida' => 10,     // % que se sugiere en la pre-cuenta y al cobrar (la propina es voluntaria)
+    'comandas_mostrador' => true, // las ventas de la caja rápida también salen a la pantalla/impresora de cocina
 ];

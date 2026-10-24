@@ -60,7 +60,7 @@ flowchart LR
 |---|---|---|---|
 | Presentación | `public/assets/*.css,js`, `views/*.php` | UI responsive, armado del carrito | **Nunca** calcula montos que se cobran |
 | Entrada | `public/index.php`, `public/api.php` | Ruteo, sesión, roles, CSRF, JSON | Valida el token en todo POST |
-| Aplicación | `src/Ventas/*`, `src/Caja/*`, `src/Compras/*`, `src/Inventario/*`, `src/Catalogo/ProductosService.php` | Casos de uso: cotizar, facturar, turnos, compras, inventario | Transacción única por operación; todo cambio de existencia deja movimiento en kárdex |
+| Aplicación | `src/Ventas/*`, `src/Caja/*`, `src/Compras/*`, `src/Inventario/*`, `src/Mesas/*`, `src/Cocina/*`, `src/Usuarios/*`, `src/Catalogo/ProductosService.php` | Casos de uso: cotizar, facturar, turnos, compras, inventario, cuentas de mesa, comandas, personal | Transacción única por operación; todo cambio de existencia deja movimiento en kárdex |
 | Dominio | `src/Pricing/PricingEngine.php` | Promos, descuentos de ley, ISV | Puro: sin BD, 100 % testeable |
 | Datos | `src/Catalogo/*`, `src/Support/Database.php` | Consultas PDO preparadas | Montos en **centavos (INT)** |
 
@@ -70,8 +70,9 @@ Power/
 ├── public/                 ← ÚNICO directorio expuesto por Apache/Nginx
 │   ├── index.php           router de pantallas
 │   ├── api.php             API JSON del POS
-│   └── assets/             app.css · pos.js
-├── views/                  _layout · login · pos · caja · cierre · productos · compras · inventario · combos · promociones · descuentos · cai · erp · factura
+│   └── assets/             app.css · comun.js · catalogo.js (catálogo y combos compartidos) · pos.js · salon.js · mesa.js · cocina.js
+├── views/                  _layout · _catalogo · login · pos · caja · cierre · productos · compras · inventario · combos · promociones · descuentos · cai · erp · factura
+│                           salon · mesa · precuenta · cocina · comanda · salon_config · personal
 ├── src/
 │   ├── bootstrap.php       autoload PSR-4 (App\ → src/), zona horaria America/Tegucigalpa
 │   ├── Pricing/            PricingEngine
@@ -80,11 +81,14 @@ Power/
 │   ├── Compras/            ComprasService (borrador → recibida)
 │   ├── Inventario/         InventarioService (kárdex, ajustes, traslados, costo promedio)
 │   ├── Catalogo/           CatalogoRepository · ProductosService (alta y CSV)
+│   ├── Mesas/              CuentasService (abrir, rondas, anular, transferir, cobro dividido) · MesasService (salón y configuración)
+│   ├── Cocina/             ComandasService (rutas por estación, pantalla, impresión única)
+│   ├── Usuarios/           UsuariosService (personal y roles)
 │   └── Support/            Database · Auth · Money · NumeroALetras
 ├── config/                 config.example.php (config.php fuera de git)
-├── database/               schema.sql · seed.sql · migraciones/002_caja_compras_inventario.sql
-├── tests/                  run.php (motor) · integracion.php (caja, compras, inventario contra MySQL)
-└── docs/                   PROPUESTA · ARQUITECTURA · capturas · diagramas
+├── database/               schema.sql · seed.sql · migraciones/002_caja_compras_inventario.sql · 003_mesas_meseros_cocina.sql
+├── tests/                  run.php (motor) · integracion.php (caja, compras, inventario) · restaurante.php (mesas y cocina) contra MySQL
+└── docs/                   PROPUESTA · ARQUITECTURA · RESTAURANTE · HOSTINGER · capturas · diagramas
 ```
 
 ---
@@ -629,6 +633,16 @@ flowchart LR
 | CAJERO | Abre, registra movimientos y cierra **su** turno; ve sus reportes | ❌ |
 | GERENTE | Igual, y además ve y cierra turnos de su tienda | ✅ su tienda |
 | ADMIN | Todo en cualquier tienda | ✅ todas |
+
+| Rol | Mesas | Pantalla de cocina | Personal |
+|---|---|---|---|
+| MESERO | Abre a su nombre, envía rondas, marca servido, pide la cuenta; **no cobra** | ❌ | ❌ |
+| COCINA | ❌ | ✅ solo esta pantalla | ❌ |
+| CAJERO | Igual que el mesero y además **cobra** con su turno abierto | ✅ (equipo que imprime) | ❌ |
+| GERENTE | Además anula lo enviado (con motivo), cambia mesero y libera mesas | ✅ | Cajeros, meseros y cocina de su tienda |
+| ADMIN | Todo | ✅ | Todos |
+
+Detalle del módulo de restaurante (modelo, flujos e impresión): [`RESTAURANTE.md`](RESTAURANTE.md).
 
 Controles: contraseñas con bcrypt · `session_regenerate_id` al iniciar sesión · cookies HttpOnly/SameSite · token CSRF en formularios y API ·
 PDO con `EMULATE_PREPARES=false` · salida escapada con `htmlspecialchars` · solo `public/` expuesto · precios calculados en el servidor.

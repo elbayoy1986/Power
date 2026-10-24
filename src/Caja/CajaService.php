@@ -11,9 +11,10 @@ use Throwable;
 /**
  * Turnos de caja: apertura con fondo inicial, ingresos/retiros de efectivo y cierre con arqueo.
  *
- *   efectivo esperado = fondo inicial + ventas cobradas en efectivo + ingresos − retiros
+ *   efectivo esperado = fondo inicial + ventas cobradas en efectivo + propinas en efectivo + ingresos − retiros
  *   diferencia        = efectivo contado − esperado   (negativo = faltante, positivo = sobrante)
  *
+ * Las propinas en efectivo quedan en la caja hasta que se entregan a los meseros (retiro "Pago de propinas").
  * Un usuario solo puede tener un turno abierto (lo garantiza un índice único en la BD).
  * Sin turno abierto la caja no puede facturar.
  */
@@ -102,12 +103,24 @@ final class CajaService
                     COALESCE(SUM(IF(estado = 'EMITIDA', descuento_promos, 0)),0) promos,
                     COALESCE(SUM(IF(estado = 'EMITIDA', descuento_legal, 0)),0) legal,
                     COALESCE(SUM(IF(estado = 'EMITIDA', isv_15 + isv_18, 0)),0) isv,
+                    COALESCE(SUM(IF(estado = 'EMITIDA', propina, 0)),0) propinas,
+                    COALESCE(SUM(IF(estado = 'EMITIDA', propina_efectivo, 0)),0) propinas_efectivo,
                     MIN(numero_factura) primera, MAX(numero_factura) ultima
              FROM ventas WHERE turno_id = ?"
         );
         $st->execute([$turnoId]);
         $v = $st->fetch();
         $efectivoVentas = (int) $v['efectivo']; // las anuladas no cuentan
+        $propinasEfectivo = (int) $v['propinas_efectivo'];
+
+        // Propinas de mesas por mesero, para entregárselas al cierre
+        $st = $this->db->prepare(
+            "SELECT u.nombre AS mesero, COUNT(*) AS facturas, SUM(v.propina) AS propina, SUM(v.propina_efectivo) AS efectivo
+             FROM ventas v JOIN cuentas c ON c.id = v.cuenta_id JOIN usuarios u ON u.id = c.mesero_id
+             WHERE v.turno_id = ? AND v.estado = 'EMITIDA' AND v.propina > 0 GROUP BY u.id, u.nombre ORDER BY u.nombre"
+        );
+        $st->execute([$turnoId]);
+        $propinasPorMesero = $st->fetchAll();
 
         $st = $this->db->prepare('SELECT m.*, u.nombre AS usuario FROM caja_movimientos m JOIN usuarios u ON u.id = m.usuario_id WHERE turno_id = ? ORDER BY m.id');
         $st->execute([$turnoId]);
@@ -123,7 +136,10 @@ final class CajaService
             'ingresos' => $ingresos,
             'retiros' => $retiros,
             'efectivo_ventas' => $efectivoVentas,
-            'efectivo_esperado' => (int) $turno['fondo_inicial'] + $efectivoVentas + $ingresos - $retiros,
+            'propinas' => (int) $v['propinas'],
+            'propinas_efectivo' => $propinasEfectivo,
+            'propinas_por_mesero' => $propinasPorMesero,
+            'efectivo_esperado' => (int) $turno['fondo_inicial'] + $efectivoVentas + $propinasEfectivo + $ingresos - $retiros,
         ];
     }
 

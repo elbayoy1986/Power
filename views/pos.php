@@ -5,6 +5,7 @@ use App\Support\Auth;
 $turno = (new CajaService($db))->turnoAbierto($usuario['id']);
 
 require __DIR__ . '/_layout.php';
+require __DIR__ . '/_catalogo.php';
 layout_inicio('Vender', 'pos', $db);
 
 if (!$turno || (int) $turno['tienda_id'] !== Auth::tiendaId()):
@@ -27,11 +28,7 @@ if (!$turno || (int) $turno['tienda_id'] !== Auth::tiendaId()):
 </section>
 <?php layout_fin(); return; endif; ?>
 <div class="pos" id="pos" data-csrf="<?= e(Auth::csrf()) ?>">
-  <section class="catalogo">
-    <div class="filtros" id="categorias" role="tablist"></div>
-    <div class="promos-hoy" id="promos-hoy"></div>
-    <div class="grilla" id="grilla"><p class="tenue">Cargando catálogo…</p></div>
-  </section>
+  <?php catalogo_seccion(); ?>
 
   <aside class="orden" id="orden">
     <header class="orden-cab">
@@ -79,20 +76,5 @@ if (!$turno || (int) $turno['tienda_id'] !== Auth::tiendaId()):
   </button>
 </div>
 
-<!-- Armador de combos -->
-<dialog id="dlg-combo" class="dialogo">
-  <form method="dialog" id="form-combo">
-    <header><h2 id="combo-titulo"></h2><p class="tenue" id="combo-desc"></p></header>
-    <div id="combo-grupos"></div>
-    <footer>
-      <div class="cantidad">
-        <button type="button" class="btn" data-delta="-1">−</button>
-        <output id="combo-cant">1</output>
-        <button type="button" class="btn" data-delta="1">+</button>
-      </div>
-      <button value="cancelar" class="btn texto" formnovalidate>Cancelar</button>
-      <button value="ok" class="btn primario" id="combo-ok">Agregar</button>
-    </footer>
-  </form>
-</dialog>
-<?php layout_fin(['assets/pos.js']); ?>
+<?php combo_dialogo(); ?>
+<?php layout_fin(['assets/comun.js', 'assets/catalogo.js', 'assets/pos.js']); ?>

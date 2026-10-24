@@ -13,11 +13,17 @@ INSERT INTO tiendas (codigo, nombre, direccion, telefono, codigo_establecimiento
 
 INSERT INTO usuarios (tienda_id, nombre, email, password_hash, rol) VALUES
 (NULL, 'Administrador', 'admin@power.hn', '$2y$10$av9mu7uADXyy211p7zApduHwsmQuENH8Ep1gdEvQ7uwhyr363B99i', 'ADMIN'),
-(1,    'Cajero Morazán', 'caja1@power.hn', '$2y$10$av9mu7uADXyy211p7zApduHwsmQuENH8Ep1gdEvQ7uwhyr363B99i', 'CAJERO');
+(1,    'Cajero Morazán', 'caja1@power.hn', '$2y$10$av9mu7uADXyy211p7zApduHwsmQuENH8Ep1gdEvQ7uwhyr363B99i', 'CAJERO'),
+(1,    'Ana (mesera)',   'mesero1@power.hn', '$2y$10$av9mu7uADXyy211p7zApduHwsmQuENH8Ep1gdEvQ7uwhyr363B99i', 'MESERO'),
+(1,    'Luis (mesero)',  'mesero2@power.hn', '$2y$10$av9mu7uADXyy211p7zApduHwsmQuENH8Ep1gdEvQ7uwhyr363B99i', 'MESERO'),
+(1,    'Cocina Morazán', 'cocina1@power.hn', '$2y$10$av9mu7uADXyy211p7zApduHwsmQuENH8Ep1gdEvQ7uwhyr363B99i', 'COCINA');
 
-INSERT INTO categorias (id, nombre, orden) VALUES
-(1, 'Combos', 1), (2, 'Hamburguesas', 2), (3, 'Pollo', 3), (4, 'Acompañantes', 4),
-(5, 'Bebidas', 5), (6, 'Postres', 6), (7, 'Cervezas', 7);
+-- Estaciones de preparación: cada categoría manda sus comandas a una
+INSERT INTO estaciones (id, nombre, orden) VALUES (1, 'Cocina', 1), (2, 'Bar', 2);
+
+INSERT INTO categorias (id, nombre, orden, estacion_id) VALUES
+(1, 'Combos', 1, 1), (2, 'Hamburguesas', 2, 1), (3, 'Pollo', 3, 1), (4, 'Acompañantes', 4, 1),
+(5, 'Bebidas', 5, 2), (6, 'Postres', 6, 1), (7, 'Cervezas', 7, 2);
 
 INSERT INTO productos (id, categoria_id, sku, nombre, precio_centavos, tipo_impuesto, vendible_solo) VALUES
 (1,  2, 'HAM-CLA', 'Hamburguesa Clásica',     12000, 'G15', 1),
@@ -95,3 +101,10 @@ INSERT INTO proveedores (rtn, nombre, telefono, email) VALUES
 ('08019000000011', 'Distribuidora de Carnes del Valle', '+504 2234-1100', 'ventas@carnesdelvalle.hn'),
 ('05019000000022', 'Embotelladora Nacional',           '+504 2556-2200', 'pedidos@embotelladora.hn'),
 ('08019000000033', 'Panificadora La Espiga',           '+504 2238-3300', 'pedidos@laespiga.hn');
+
+-- Salón de Power Morazán: zonas y mesas (las otras tiendas trabajan solo mostrador)
+INSERT INTO zonas (id, tienda_id, nombre, orden) VALUES (1, 1, 'Salón', 1), (2, 1, 'Terraza', 2);
+INSERT INTO mesas (tienda_id, zona_id, nombre, capacidad, orden) VALUES
+(1, 1, '1', 4, 1), (1, 1, '2', 4, 2), (1, 1, '3', 2, 3), (1, 1, '4', 2, 4),
+(1, 1, '5', 6, 5), (1, 1, '6', 6, 6), (1, 1, '7', 4, 7), (1, 1, '8', 8, 8),
+(1, 2, 'T1', 4, 1), (1, 2, 'T2', 4, 2), (1, 2, 'T3', 2, 3), (1, 2, 'T4', 2, 4);
