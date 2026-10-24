@@ -44,6 +44,14 @@ php tests/run.php          # motor de precios, promos, ley, ISV y montos en letr
 DB_DSN='mysql:host=127.0.0.1;dbname=power_pos;charset=utf8mb4' DB_USER=root DB_PASS= php tests/integracion.php
 ```
 
+### Publicar en Hostinger
+
+```bash
+bash deploy/empaquetar-hostinger.sh   # genera dist/subir-a-public_html.zip y dist/instalar.sql
+```
+
+Paso a paso en hPanel (base de datos, phpMyAdmin, Administrador de archivos y SSL): [`docs/HOSTINGER.md`](docs/HOSTINGER.md)
+
 ### Actualizar una instalación existente
 
 ```bash

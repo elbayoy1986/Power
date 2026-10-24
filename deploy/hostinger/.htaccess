@@ -1,0 +1,22 @@
+# Power POS en Hostinger (o cualquier Apache/LiteSpeed)
+# Este archivo va en la raíz de public_html. Solo public/ queda visible en la web;
+# el código, las vistas y la configuración no se pueden abrir desde el navegador.
+Options -Indexes
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Para forzar HTTPS cuando el SSL ya esté activo, quite el # de las dos líneas siguientes
+  # (o active "Forzar HTTPS" en hPanel, que hace lo mismo).
+  # RewriteCond %{HTTPS} !=on
+  # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+  # Carpetas internas: prohibidas
+  RewriteRule ^(src|views|config)(/|$) - [F,L]
+
+  # Todo lo demás se sirve desde public/
+  RewriteRule ^public/ - [L]
+  RewriteRule ^$ public/index.php [L]
+  RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
