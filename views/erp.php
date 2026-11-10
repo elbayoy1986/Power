@@ -40,10 +40,10 @@ $sqlStock = 'SELECT t.nombre tienda, p.nombre producto, i.existencia, i.minimo
              WHERE p.controla_stock = 1 AND i.existencia <= i.minimo' . ($soloTienda ? ' AND i.tienda_id = ' . (int) $soloTienda : '') . '
              ORDER BY i.existencia - i.minimo LIMIT 10';
 $stockBajo = $db->query($sqlStock)->fetchAll();
-$cfg = $GLOBALS['config'];
-$st = $db->prepare('SELECT * FROM v_estado_cai WHERE dias_restantes <= ? OR disponibles <= ?');
-$st->execute([$cfg['cai_alerta_dias'], $cfg['cai_alerta_facturas']]);
-$caiAlertas = $st->fetchAll();
+// Alertas de CAI (umbrales en Configuración → Parámetros); un usuario de tienda solo ve las de su sucursal
+$caiAlertas = (new App\Configuracion\CaiService($db))->alertas(
+    (int) $soloTienda, App\Support\Parametros::entero('cai_alerta_dias'), App\Support\Parametros::entero('cai_alerta_facturas')
+);
 
 $maxDia = max(1, ...array_map(fn ($d) => (int) $d['ventas'], $porDia ?: [['ventas' => 1]]));
 $maxHora = max(1, ...array_map(fn ($h) => (int) $h['facturas'], $porHora ?: [['facturas' => 1]]));
@@ -52,7 +52,7 @@ require __DIR__ . '/_layout.php';
 layout_inicio('Tablero ERP', 'erp', $db);
 ?>
 <div class="fila-entre">
-  <h1>Tablero central <?= $soloTienda ? '' : '· todas las tiendas' ?></h1>
+  <h1><?= $soloTienda ? 'Reporte de la tienda' : 'Tablero central · todas las sucursales' ?></h1>
   <form class="fila" method="get">
     <input type="hidden" name="p" value="erp">
     <label>Desde <input type="date" name="desde" value="<?= e($desde) ?>"></label>
@@ -62,8 +62,8 @@ layout_inicio('Tablero ERP', 'erp', $db);
 </div>
 
 <?php foreach ($caiAlertas as $a): ?>
-  <div class="aviso error">CAI de <b><?= e($a['tienda']) ?></b> (PE <?= e($a['punto_emision']) ?>):
-    <?= (int) $a['disponibles'] ?> números disponibles, vence en <?= (int) $a['dias_restantes'] ?> días. Solicite nuevo CAI a la SAR.</div>
+  <div class="aviso <?= $a['nivel'] === 'error' ? 'error' : '' ?>" role="status"><?= e($a['mensaje']) ?>
+    <?php if ($usuario['rol'] === 'ADMIN'): ?><a href="index.php?p=configuracion&s=cai&tienda=<?= (int) $a['tienda_id'] ?>">Ir a CAI</a><?php endif; ?></div>
 <?php endforeach; ?>
 
 <div class="kpis ocho">

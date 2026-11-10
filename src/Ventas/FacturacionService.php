@@ -52,12 +52,13 @@ final class FacturacionService
 
         $this->db->beginTransaction();
         try {
-            $st = $this->db->prepare("SELECT tienda_id FROM turnos_caja WHERE id = ? AND usuario_id = ? AND estado = 'ABIERTO' FOR UPDATE");
+            $st = $this->db->prepare("SELECT tienda_id, punto_emision FROM turnos_caja WHERE id = ? AND usuario_id = ? AND estado = 'ABIERTO' FOR UPDATE");
             $st->execute([$turnoId, $usuarioId]);
-            if ((int) $st->fetchColumn() !== $tiendaId) {
+            $turno = $st->fetch();
+            if (!$turno || (int) $turno['tienda_id'] !== $tiendaId) {
                 throw new DomainException('Su turno de caja no está abierto en esta tienda. Abra turno para facturar.');
             }
-            $cai = $this->tomarCorrelativo($tiendaId);
+            $cai = $this->tomarCorrelativo($tiendaId, $turno['punto_emision']);
             $st = $this->db->prepare(
                 'INSERT INTO ventas (tienda_id, usuario_id, turno_id, cai_id, cai, numero_factura, rango_autorizado, fecha_limite_emision,
                     cliente_rtn, cliente_nombre, descuento_legal_id, beneficiario_nombre, beneficiario_documento,
@@ -141,18 +142,23 @@ final class FacturacionService
         return [$forma, 0, 0];
     }
 
-    private function tomarCorrelativo(int $tiendaId): array
+    /**
+     * Siguiente número del CAI vigente. Si el turno tiene punto de emisión (caja), solo se usan
+     * los CAI de ese punto; con varios vigentes se consume primero el que vence antes.
+     */
+    private function tomarCorrelativo(int $tiendaId, ?string $puntoEmision): array
     {
         $st = $this->db->prepare(
             'SELECT c.*, t.codigo_establecimiento FROM cai c JOIN tiendas t ON t.id = c.tienda_id
              WHERE c.tienda_id = ? AND c.activo = 1 AND c.fecha_limite >= CURDATE()
-               AND c.correlativo_actual < c.rango_final
+               AND c.correlativo_actual < c.rango_final AND (? IS NULL OR c.punto_emision = ?)
              ORDER BY c.fecha_limite, c.id LIMIT 1 FOR UPDATE'
         );
-        $st->execute([$tiendaId]);
+        $st->execute([$tiendaId, $puntoEmision, $puntoEmision]);
         $c = $st->fetch();
         if (!$c) {
-            throw new DomainException('No hay CAI vigente con números disponibles para esta tienda. No se puede facturar.');
+            throw new DomainException('No hay CAI vigente con números disponibles para esta tienda'
+                . ($puntoEmision ? " en el punto de emisión $puntoEmision" : '') . '. No se puede facturar.');
         }
         $siguiente = (int) $c['correlativo_actual'] + 1;
         $this->db->prepare('UPDATE cai SET correlativo_actual = ? WHERE id = ?')->execute([$siguiente, $c['id']]);

@@ -38,7 +38,8 @@ Power POS resuelve los tres con una sola plataforma web:
 8. **Apertura y cierre de caja**: turno con fondo inicial, ventas ligadas al turno, entradas y retiros de efectivo con motivo, cambio al cobrar, pago mixto, corte X, arqueo por denominación de lempiras, faltante o sobrante con nota obligatoria y reporte Z de 80 mm con firmas.
 9. **Productos y carga masiva**: alta y edición con SKU único, categorías nuevas al vuelo e importación CSV o Excel (`,` o `;`) que crea o actualiza y es de todo o nada.
 10. **Compras e inventario**: proveedores, compras en borrador o recibidas (sin facturas duplicadas), entrada al inventario con costo promedio ponderado, ajustes y mermas con motivo, traslados entre tiendas, mínimos por tienda y kárdex con saldo.
-11. **Seguridad**: login con bcrypt, roles (ADMIN, GERENTE, CAJERO), CSRF, consultas preparadas y precios calculados solo en el servidor.
+11. **Dos menús y Configuración** ([detalle](MENUS.md)): menú de tienda para el personal de sucursal y menú administrativo para oficina central. Configuración reúne empresa, sucursales, CAI por sucursal y caja, usuarios y roles, descuentos de ley, categorías, proveedores y parámetros. Incluye consulta de facturas y cambio de contraseña.
+12. **Seguridad**: login con bcrypt, roles (ADMIN, GERENTE, CAJERO), CSRF, consultas preparadas y precios calculados solo en el servidor.
 
 ### Fuera del MVP (roadmap)
 Modo offline, impresión ESC/POS directa, KDS (pantalla de cocina), recetas e insumos (descargar ingredientes en vez de productos),

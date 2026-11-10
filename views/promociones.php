@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $itemsA = $_POST['items_a'] ?? [];
     $itemsB = $_POST['items_b'] ?? [];
     if (!$tipo || trim($_POST['nombre'] ?? '') === '' || !$itemsA || ($tipo === 'X_LLEVA_Y' && !$itemsB)) {
-        redirigir('promociones', 'Complete nombre, tipo y artículos participantes.');
+        redirigir('promociones', 'Complete nombre, tipo y artículos participantes.', true);
     }
     $dias = implode('', array_intersect(['1', '2', '3', '4', '5', '6', '7'], $_POST['dias'] ?? [])) ?: '1234567';
 

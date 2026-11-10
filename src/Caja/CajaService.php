@@ -39,17 +39,45 @@ final class CajaService
         return $st->fetch() ?: null;
     }
 
-    public function abrir(int $tiendaId, int $usuarioId, int $fondo): int
+    /**
+     * Puntos de emisión (cajas) de la sucursal que tienen CAI vigente con números disponibles.
+     * @return array<int,array{punto_emision:string, disponibles:int}>
+     */
+    public function puntosEmision(int $tiendaId): array
+    {
+        $st = $this->db->prepare(
+            'SELECT punto_emision, SUM(rango_final - correlativo_actual) AS disponibles FROM cai
+             WHERE tienda_id = ? AND activo = 1 AND fecha_limite >= CURDATE() AND correlativo_actual < rango_final
+             GROUP BY punto_emision ORDER BY punto_emision'
+        );
+        $st->execute([$tiendaId]);
+        return $st->fetchAll();
+    }
+
+    /**
+     * Abre el turno. $puntoEmision es la caja en la que trabajará: de su CAI salen las facturas.
+     * Si la sucursal solo tiene un punto de emisión se asigna solo; si tiene varios, hay que elegir.
+     */
+    public function abrir(int $tiendaId, int $usuarioId, int $fondo, ?string $puntoEmision = null): int
     {
         if ($fondo < 0) {
             throw new DomainException('El fondo inicial no puede ser negativo.');
         }
+        $puntos = array_column($this->puntosEmision($tiendaId), 'punto_emision');
+        $puntoEmision = trim((string) $puntoEmision) ?: null;
+        if ($puntoEmision === null && count($puntos) > 1) {
+            throw new DomainException('Esta sucursal tiene varias cajas. Elija su punto de emisión: ' . implode(', ', $puntos) . '.');
+        }
+        if ($puntoEmision !== null && !in_array($puntoEmision, $puntos, true)) {
+            throw new DomainException("El punto de emisión $puntoEmision no tiene un CAI vigente en esta sucursal.");
+        }
+        $puntoEmision ??= $puntos[0] ?? null;
         if ($abierto = $this->turnoAbierto($usuarioId)) {
             throw new DomainException("Ya tiene un turno abierto en {$abierto['tienda']} desde " . date('d/m H:i', strtotime($abierto['apertura'])) . '. Ciérrelo primero.');
         }
         try {
-            $this->db->prepare('INSERT INTO turnos_caja (tienda_id, usuario_id, fondo_inicial) VALUES (?, ?, ?)')
-                ->execute([$tiendaId, $usuarioId, $fondo]);
+            $this->db->prepare('INSERT INTO turnos_caja (tienda_id, usuario_id, punto_emision, fondo_inicial) VALUES (?, ?, ?, ?)')
+                ->execute([$tiendaId, $usuarioId, $puntoEmision, $fondo]);
         } catch (PDOException $e) {
             if ($e->getCode() === '23000') { // doble clic: el índice único lo frena
                 throw new DomainException('Ya tiene un turno abierto.');

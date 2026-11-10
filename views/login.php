@@ -4,7 +4,7 @@ use App\Support\Auth;
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (Auth::login(trim($_POST['email'] ?? ''), $_POST['password'] ?? '')) {
-        redirigir(Auth::usuario()['rol'] === 'CAJERO' ? 'pos' : 'erp');
+        redirigir(App\Support\Menu::inicio(Auth::usuario()));
     }
     $error = 'Correo o contraseña incorrectos.';
 }

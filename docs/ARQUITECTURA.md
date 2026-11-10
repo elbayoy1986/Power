@@ -71,7 +71,9 @@ Power/
 │   ├── index.php           router de pantallas
 │   ├── api.php             API JSON del POS
 │   └── assets/             app.css · pos.js
-├── views/                  _layout · login · pos · caja · cierre · productos · compras · inventario · combos · promociones · descuentos · cai · erp · factura
+├── views/                  _layout · _apertura · login · pos · caja · cierre · facturas · factura · cuenta · productos · combos · promociones · compras · inventario · erp
+│   ├── configuracion.php   entrada de Configuración (migas, pestañas y despacho por sección)
+│   └── config/             inicio · empresa · sucursales · cai · usuarios · descuentos · categorias · proveedores · parametros
 ├── src/
 │   ├── bootstrap.php       autoload PSR-4 (App\ → src/), zona horaria America/Tegucigalpa
 │   ├── Pricing/            PricingEngine
@@ -80,9 +82,10 @@ Power/
 │   ├── Compras/            ComprasService (borrador → recibida)
 │   ├── Inventario/         InventarioService (kárdex, ajustes, traslados, costo promedio)
 │   ├── Catalogo/           CatalogoRepository · ProductosService (alta y CSV)
-│   └── Support/            Database · Auth · Money · NumeroALetras
+│   ├── Configuracion/      TiendasService · UsuariosService · CaiService (registro, cruces de rango y alertas)
+│   └── Support/            Database · Auth · Menu (rutas, permisos y los dos menús) · Parametros · Money · NumeroALetras
 ├── config/                 config.example.php (config.php fuera de git)
-├── database/               schema.sql · seed.sql · migraciones/002_caja_compras_inventario.sql
+├── database/               schema.sql · seed.sql · migraciones/ (002 caja, compras e inventario · 003 configuración)
 ├── tests/                  run.php (motor) · integracion.php (caja, compras, inventario contra MySQL)
 └── docs/                   PROPUESTA · ARQUITECTURA · capturas · diagramas
 ```
@@ -95,8 +98,8 @@ Power/
 
 ```mermaid
 flowchart TB
-    subgraph ORG["🏢 Organización"]
-        empresa; tiendas; usuarios
+    subgraph ORG["🏢 Organización y configuración"]
+        empresa; tiendas; usuarios; parametros
     end
     subgraph CAT["📋 Catálogo"]
         categorias; productos; precios_tienda
@@ -354,6 +357,13 @@ erDiagram
         varchar notas
         enum estado "ABIERTO CERRADO"
         tinyint abierto UK "generada: 1 turno abierto por usuario"
+        char punto_emision "caja del turno: de su CAI salen las facturas"
+    }
+    parametros {
+        varchar clave PK "cai_alerta_dias, fondo_caja_sugerido..."
+        varchar valor
+        varchar descripcion
+        datetime actualizado
     }
     caja_movimientos {
         bigint id PK
@@ -459,6 +469,10 @@ erDiagram
 | `UNIQUE (proveedor_id, numero_documento)` en compras | Evita cargar dos veces la misma factura de proveedor |
 | Compra recibida inmutable | Las correcciones se hacen con ajustes: el kárdex conserva la historia |
 | Kárdex con saldo reconstruido desde la existencia actual | El saldo mostrado siempre cuadra con la existencia |
+| `turnos_caja.punto_emision` | Con varias cajas por sucursal, cada turno factura con el CAI de su caja |
+| Rangos de CAI sin cruces por sucursal + caja + tipo | Dos CAI nunca autorizan el mismo número de factura |
+| `parametros` (clave → valor) | Umbrales de alerta, fondo sugerido y pie de factura editables sin tocar archivos |
+| Establecimiento inmutable tras la primera factura | El prefijo de las facturas emitidas no puede dejar de coincidir con la sucursal |
 
 ### 2.4 Índices y restricciones relevantes
 
@@ -616,19 +630,24 @@ flowchart LR
     L[Traslado entre tiendas] --> M[Kárdex: salida en origen + entrada al costo de origen]
 ```
 
-## 4. Seguridad y roles
+## 4. Seguridad, roles y menús
 
-| Rol | Caja | Combos / Promos | Descuentos de ley / CAI | Tablero ERP |
-|---|---|---|---|---|
-| CAJERO | ✅ su tienda | ❌ | ❌ | ❌ |
-| GERENTE | ✅ | ✅ | ❌ | ✅ (su tienda si tiene una asignada) |
-| ADMIN | ✅ todas | ✅ | ✅ | ✅ todas |
+Hay **dos menús**: el de tienda (usuarios con sucursal asignada) y el administrativo (oficina central).
+El detalle de cada opción está en **[MENUS.md](MENUS.md)**.
 
-| Rol | Turno de caja | Productos · Compras · Inventario |
-|---|---|---|
-| CAJERO | Abre, registra movimientos y cierra **su** turno; ve sus reportes | ❌ |
-| GERENTE | Igual, y además ve y cierra turnos de su tienda | ✅ su tienda |
-| ADMIN | Todo en cualquier tienda | ✅ todas |
+| Función | Cajero | Gerente de tienda | Gerente central | Administrador |
+|---|:-:|:-:|:-:|:-:|
+| Vender, turno de caja, mi cuenta | ✔ | ✔ | ✔ | ✔ |
+| Facturas | Las suyas | Su sucursal | Todas | Todas |
+| Cerrar turnos de otros cajeros | — | Su sucursal | ✔ | ✔ |
+| Inventario y compras | — | Su sucursal | ✔ | ✔ |
+| Reporte / tablero | — | Su sucursal | Todas | Todas |
+| Catálogo: productos, combos y promociones | — | — | ✔ | ✔ |
+| Configuración | — | — | — | ✔ |
+
+`src/Support/Menu.php` es la única fuente de verdad: define las rutas, quién puede abrirlas y qué menú ve cada usuario.
+El router y la barra de navegación leen de ahí, así que un enlace nunca aparece si la página no se puede abrir, y viceversa.
+`Auth::refrescar()` vuelve a leer al usuario de la base en cada petición: desactivarlo, cambiarle el rol o cerrar su sucursal aplica de inmediato.
 
 Controles: contraseñas con bcrypt · `session_regenerate_id` al iniciar sesión · cookies HttpOnly/SameSite · token CSRF en formularios y API ·
 PDO con `EMULATE_PREPARES=false` · salida escapada con `htmlspecialchars` · solo `public/` expuesto · precios calculados en el servidor.

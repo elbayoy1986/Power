@@ -198,6 +198,10 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .arqueo-m { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: .4rem; }
 .arqueo-m label { display: grid; grid-template-columns: 1fr 58px; align-items: center; gap: .3rem; font-size: .85rem; background: var(--fondo); border: 1px solid var(--linea); border-radius: 8px; padding: .3rem .45rem; }
 .arqueo-m input { width: 100%; min-width: 0; padding: .3rem; border: 1px solid var(--linea); border-radius: 6px; background: var(--papel); text-align: right; }
+.arbol { list-style: none; margin: 0; padding: 0; display: grid; gap: .3rem; }
+.arbol > li { background: var(--fondo); border: 1px solid var(--linea); border-radius: 8px; padding: .45rem .7rem; font-weight: 700; }
+.arbol ul { list-style: none; margin: .3rem 0 0; padding: 0 0 0 .8rem; border-left: 2px solid var(--linea); display: grid; gap: .15rem; font-weight: 400; }
+.arbol ul small { color: var(--tenue); }
 .mapa-roles { display: grid; gap: .7rem; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin: 1rem 0; }
 .mapa-roles button { text-align: left; background: var(--papel); border: 1px solid var(--linea); border-radius: 12px; padding: .9rem; cursor: pointer; display: grid; gap: .3rem; }
 .mapa-roles button:hover { border-color: var(--rojo); }
@@ -220,8 +224,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
     <div class="roles" role="group" aria-label="Filtrar por rol">
       <button class="rol" data-rol="todos" aria-pressed="true">Todos</button>
       <button class="rol" data-rol="cajero" aria-pressed="false">Cajero</button>
-      <button class="rol" data-rol="gerente" aria-pressed="false">Gerente</button>
-      <button class="rol" data-rol="admin" aria-pressed="false">Admin</button>
+      <button class="rol" data-rol="gerente" aria-pressed="false">Gerente de tienda</button>
+      <button class="rol" data-rol="admin" aria-pressed="false">Oficina central</button>
     </div>
     <select class="selector-movil" id="selector-movil" aria-label="Ir a sección"></select>
     <nav id="nav" aria-label="Índice"></nav>
@@ -233,25 +237,58 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
   <section class="seccion" id="inicio" data-grupo="Empezar" data-roles="cajero gerente admin" data-titulo="Bienvenida">
     <div class="ceja">Empezar</div>
     <h2>Bienvenida a Power POS</h2>
-    <p class="lead">Power POS es la caja, la facturación con CAI y el tablero central de todas las tiendas. Este manual explica cada pantalla y trae herramientas para practicar sin tocar ventas reales.</p>
+    <p class="lead">Power POS es la caja, la facturación con CAI y el control central de todas las sucursales. Este manual explica cada pantalla y trae herramientas para practicar sin tocar ventas reales.</p>
     <p>Elija su rol para ver solo lo que le corresponde:</p>
     <div class="mapa-roles">
-      <button data-ir-rol="cajero"><b>Cajero</b><span>Vender, armar combos, aplicar tercera o cuarta edad y emitir la factura.</span></button>
-      <button data-ir-rol="gerente"><b>Gerente</b><span>Crear combos y promociones, y revisar el tablero de su tienda.</span></button>
-      <button data-ir-rol="admin"><b>Administrador</b><span>CAI de la SAR, descuentos de ley, usuarios y todas las tiendas.</span></button>
+      <button data-ir-rol="cajero"><b>Cajero</b><span>Vender, armar combos, aplicar tercera o cuarta edad, facturar y cuadrar su caja.</span></button>
+      <button data-ir-rol="gerente"><b>Gerente de tienda</b><span>Lo del cajero, más inventario, compras y el reporte de su sucursal.</span></button>
+      <button data-ir-rol="admin"><b>Oficina central</b><span>Catálogo de toda la cadena, tablero y Configuración: sucursales, CAI y usuarios.</span></button>
     </div>
     <h3>Cómo ingresar</h3>
     <ol class="pasos">
       <li><div>Abra la dirección de Power POS en el navegador del celular, tablet o computadora.</div></li>
       <li><div>Escriba su <b>correo</b> y <b>contraseña</b>, y toque <span class="ui">Ingresar</span>.</div></li>
-      <li><div>El cajero entra directo a <b>Vender</b> y abre su turno con el fondo inicial. Gerentes y administradores entran al <b>Tablero ERP</b>.</div></li>
-      <li><div>Si su usuario no tiene tienda fija (administrador), cambie de tienda con el selector de la barra superior. Todo lo que facture se registra en la tienda seleccionada.</div></li>
+      <li><div>Quien trabaja en una sucursal entra directo a <b>Vender</b> y abre su turno. Quien trabaja en oficina central entra al <b>Tablero</b>.</div></li>
+      <li><div>La etiqueta junto al logo indica dónde está: el nombre de su sucursal o <b>Administración</b>. En oficina central, el selector <span class="ui">Sucursal</span> decide sobre qué tienda trabaja.</div></li>
     </ol>
     <div class="nota info"><strong>Su progreso se guarda en este navegador.</strong>Marque cada tema como aprendido al final de la sección; la barra superior muestra su avance.</div>
     <div class="pie-seccion"><button class="aprendido" data-hecho="inicio" aria-pressed="false">Marcar como aprendido</button></div>
   </section>
 
   <!-- ===================== CAJERO ===================== -->
+  <section class="seccion" id="menus" data-grupo="Empezar" data-roles="cajero gerente admin" data-titulo="Los dos menús">
+    <div class="ceja">Empezar</div>
+    <h2>Los dos menús</h2>
+    <p class="lead">La plataforma muestra un menú distinto según dónde trabaja la persona. Así cada quien ve solo lo que usa.</p>
+    <div class="tabla-envoltura"><table>
+      <thead><tr><th></th><th>Menú de tienda</th><th>Menú administrativo</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Quién lo ve</th><td>Usuarios con sucursal asignada: cajeros y gerentes de tienda</td><td>Oficina central: administradores y gerentes centrales</td></tr>
+        <tr><th scope="row">Etiqueta en la barra</th><td>El nombre de la sucursal</td><td>Administración</td></tr>
+        <tr><th scope="row">Empieza en</th><td>Vender</td><td>Tablero</td></tr>
+        <tr><th scope="row">Opciones</th><td>Vender, Turno de caja, Facturas y Mi tienda</td><td>Tablero, Ventas, Catálogo, Abastecimiento y Configuración</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="banco">
+      <div class="banco-cab"><b>¿Qué menú verá?</b><small>Elija el rol y el lugar de trabajo</small></div>
+      <div class="banco-cuerpo dos">
+        <div style="display:grid;gap:.6rem;min-width:0;align-content:start">
+          <label class="campo">Rol
+            <select id="mn-rol"><option value="CAJERO">Cajero</option><option value="GERENTE">Gerente</option><option value="ADMIN">Administrador</option></select>
+          </label>
+          <label class="campo">Lugar de trabajo
+            <select id="mn-lugar"><option value="tienda">Una sucursal</option><option value="central">Oficina central (todas)</option></select>
+          </label>
+          <div class="porque" id="mn-nota"></div>
+        </div>
+        <div class="salida" id="mn-salida" aria-live="polite"></div>
+      </div>
+    </div>
+    <div class="nota info"><strong>En el celular</strong>el menú se abre con el botón ☰. Los grupos con flecha se despliegan al tocarlos. Su nombre, al final, abre <b>Mi cuenta</b> y <b>Salir</b>.</div>
+    <div class="pie-seccion"><button class="aprendido" data-hecho="menus" aria-pressed="false">Marcar como aprendido</button></div>
+  </section>
+
   <section class="seccion" id="vender" data-grupo="Caja" data-roles="cajero gerente admin" data-titulo="Vender productos">
     <div class="ceja">Caja · Cajero</div>
     <h2>Vender productos</h2>
@@ -329,13 +366,15 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
     <h3>Al iniciar</h3>
     <ol class="pasos">
       <li><div>Cuente el efectivo de cambio que le entregan (fondo inicial).</div></li>
-      <li><div>En <span class="ui">Vender</span> o en <span class="ui">Turno</span>, escriba el fondo y toque <span class="ui">Abrir turno</span>.</div></li>
+      <li><div>En <span class="ui">Vender</span> o en <span class="ui">Turno de caja</span>, revise el fondo (viene sugerido; cámbielo si recibió otro monto).</div></li>
+      <li><div>Si su sucursal tiene varias cajas, elija la suya en <span class="ui">Caja (punto de emisión)</span>: sus facturas saldrán con el número de esa caja.</div></li>
+      <li><div>Toque <span class="ui">Abrir turno</span>.</div></li>
     </ol>
     <h3>Durante el turno</h3>
     <ol class="pasos">
       <li><div>Al cobrar en efectivo escriba lo que entrega el cliente en <span class="ui">Efectivo recibido</span>: el sistema muestra el <b>cambio</b> y no deja facturar si no alcanza.</div></li>
       <li><div>En <b>pago mixto</b> escriba solo la parte en efectivo; el resto se cobra con tarjeta.</div></li>
-      <li><div>Si sale dinero de la caja (remesa a bóveda, compra menor) regístrelo en <span class="ui">Turno</span> → <span class="ui">Retiro</span> con su motivo. Si le traen más cambio, es un <span class="ui">Ingreso</span>.</div></li>
+      <li><div>Si sale dinero de la caja (remesa a bóveda, compra menor) regístrelo en <span class="ui">Turno de caja</span> → <span class="ui">Retiro</span> con su motivo. Si le traen más cambio, es un <span class="ui">Ingreso</span>.</div></li>
       <li><div><span class="ui">Corte X</span> imprime un reporte parcial sin cerrar el turno.</div></li>
     </ol>
     <h3>Al terminar: arqueo y cierre</h3>
@@ -365,6 +404,32 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
     </div>
     <div class="nota cuidado"><strong>Un turno por persona.</strong>No venda con el usuario de otro cajero: el faltante se cargaría a su turno. El gerente puede cerrar un turno olvidado desde el historial.</div>
     <div class="pie-seccion"><button class="aprendido" data-hecho="turno" aria-pressed="false">Marcar como aprendido</button></div>
+  </section>
+
+  <section class="seccion" id="facturas" data-grupo="Caja" data-roles="cajero gerente admin" data-titulo="Facturas y mi cuenta">
+    <div class="ceja">Caja · Cajero</div>
+    <h2>Consultar facturas y cambiar su contraseña</h2>
+    <h3>Facturas</h3>
+    <ol class="pasos">
+      <li><div>Entre a <span class="ui">Facturas</span>. Por defecto muestra las de hoy.</div></li>
+      <li><div>Cambie las fechas o busque por número de factura, nombre del cliente o RTN.</div></li>
+      <li><div>Toque el <b>número de la factura</b> (o <span class="ui">Reimprimir</span>) para abrirla e imprimirla otra vez.</div></li>
+    </ol>
+    <div class="tabla-envoltura"><table>
+      <thead><tr><th>Quién consulta</th><th>Qué facturas ve</th></tr></thead>
+      <tbody>
+        <tr><td>Cajero</td><td>Solo las que emitió</td></tr>
+        <tr><td>Gerente de tienda</td><td>Todas las de su sucursal</td></tr>
+        <tr><td>Oficina central</td><td>Todas, con filtro por sucursal</td></tr>
+      </tbody>
+    </table></div>
+    <h3>Mi cuenta</h3>
+    <ol class="pasos">
+      <li><div>Toque su nombre en el menú y luego <span class="ui">Mi cuenta</span>.</div></li>
+      <li><div>Escriba su contraseña actual y la nueva dos veces: mínimo 8 caracteres, con letras y números.</div></li>
+    </ol>
+    <div class="nota cuidado"><strong>Si olvidó su contraseña</strong>pídale a un administrador que le asigne una temporal y cámbiela al entrar.</div>
+    <div class="pie-seccion"><button class="aprendido" data-hecho="facturas" aria-pressed="false">Marcar como aprendido</button></div>
   </section>
 
   <section class="seccion" id="simulador" data-grupo="Practicar" data-roles="cajero gerente admin" data-titulo="Simulador de caja">
@@ -410,12 +475,12 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
   </section>
 
   <!-- ===================== GERENTE ===================== -->
-  <section class="seccion" id="crear-combo" data-grupo="Gestión" data-roles="gerente admin" data-titulo="Crear combos">
-    <div class="ceja">Gestión · Gerente</div>
+  <section class="seccion" id="crear-combo" data-grupo="Catálogo" data-roles="admin" data-titulo="Crear combos">
+    <div class="ceja">Catálogo · Oficina central</div>
     <h2>Crear combos</h2>
     <p class="lead">Un combo es un precio base más grupos de selección. Cada grupo dice cuántas opciones se eligen y cuáles se permiten.</p>
     <ol class="pasos">
-      <li><div>Vaya a <span class="ui">Combos</span> y llene <b>Nombre</b>, <b>Descripción</b> y <b>Precio con ISV</b>.</div></li>
+      <li><div>Vaya a <span class="ui">Catálogo</span> → <span class="ui">Combos</span> y llene <b>Nombre</b>, <b>Descripción</b> y <b>Precio con ISV</b>.</div></li>
       <li><div>En el primer grupo escriba el nombre que verá el cajero, por ejemplo <i>Elige tu bebida</i>, y su mínimo y máximo.</div></li>
       <li><div>Marque los productos permitidos. Escriba el <b>recargo</b> solo en las opciones que cuestan más (por ejemplo, refresco grande <b>10</b>).</div></li>
       <li><div>Marque cuál es la opción <b>Defecto</b>: es la que aparece seleccionada en la caja.</div></li>
@@ -435,8 +500,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
     <div class="pie-seccion"><button class="aprendido" data-hecho="crear-combo" aria-pressed="false">Marcar como aprendido</button></div>
   </section>
 
-  <section class="seccion" id="promos" data-grupo="Gestión" data-roles="gerente admin" data-titulo="Promociones mix & match">
-    <div class="ceja">Gestión · Gerente</div>
+  <section class="seccion" id="promos" data-grupo="Catálogo" data-roles="admin" data-titulo="Promociones mix & match">
+    <div class="ceja">Catálogo · Oficina central</div>
     <h2>Promociones mix &amp; match</h2>
     <p class="lead">Hay cuatro tipos de promoción. Elija uno en el explorador para ver cómo se configura y cuánto ahorra el cliente con un ejemplo real.</p>
 
@@ -453,7 +518,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 
     <h3>Configurar en la plataforma</h3>
     <ol class="pasos">
-      <li><div>En <span class="ui">Promociones</span>, escriba un nombre que el cajero entienda, como "3 postres por L 75".</div></li>
+      <li><div>En <span class="ui">Catálogo</span> → <span class="ui">Promociones</span>, escriba un nombre que el cajero entienda, como "3 postres por L 75".</div></li>
       <li><div>Elija el tipo. El formulario muestra solo los campos que ese tipo necesita.</div></li>
       <li><div>Seleccione los artículos: una <b>categoría completa</b>, combos o productos sueltos (Ctrl o Cmd para varios).</div></li>
       <li><div>Defina fechas, días, horario y tiendas. Sin tiendas marcadas aplica en todas.</div></li>
@@ -462,12 +527,12 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
     <div class="pie-seccion"><button class="aprendido" data-hecho="promos" aria-pressed="false">Marcar como aprendido</button></div>
   </section>
 
-  <section class="seccion" id="productos" data-grupo="Gestión" data-roles="gerente admin" data-titulo="Productos y carga masiva">
-    <div class="ceja">Gestión · Gerente</div>
+  <section class="seccion" id="productos" data-grupo="Catálogo" data-roles="admin" data-titulo="Productos y carga masiva">
+    <div class="ceja">Catálogo · Oficina central</div>
     <h2>Productos y carga masiva</h2>
     <p class="lead">Cree productos uno a uno o cargue todo el menú desde Excel.</p>
     <ol class="pasos">
-      <li><div>En <span class="ui">Productos</span> llene SKU (código único), nombre, categoría, precio <b>con ISV</b> e impuesto. Puede crear una categoría nueva desde la misma lista.</div></li>
+      <li><div>En <span class="ui">Catálogo</span> → <span class="ui">Productos</span> llene SKU (código único), nombre, categoría, precio <b>con ISV</b> e impuesto. Puede crear una categoría nueva desde la misma lista.</div></li>
       <li><div>Desmarque <b>Se vende solo</b> si el producto solo va dentro de combos (por ejemplo, papas grandes).</div></li>
       <li><div>Desmarque <b>Controla inventario</b> en lo que no se cuenta (salsas, servilletas).</div></li>
       <li><div>Un producto nuevo empieza con existencia 0: cárguela con una <b>compra</b>.</div></li>
@@ -483,8 +548,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
     <div class="pie-seccion"><button class="aprendido" data-hecho="productos" aria-pressed="false">Marcar como aprendido</button></div>
   </section>
 
-  <section class="seccion" id="compras" data-grupo="Gestión" data-roles="gerente admin" data-titulo="Registrar compras">
-    <div class="ceja">Gestión · Gerente</div>
+  <section class="seccion" id="compras" data-grupo="Abastecimiento" data-roles="gerente admin" data-titulo="Registrar compras">
+    <div class="ceja">Abastecimiento · Gerentes</div>
     <h2>Registrar compras a proveedores</h2>
     <p class="lead">La mercadería entra al inventario solo cuando la compra se <b>recibe</b>.</p>
     <ol class="pasos">
@@ -505,8 +570,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
     <div class="pie-seccion"><button class="aprendido" data-hecho="compras" aria-pressed="false">Marcar como aprendido</button></div>
   </section>
 
-  <section class="seccion" id="inventario" data-grupo="Gestión" data-roles="gerente admin" data-titulo="Inventario y kárdex">
-    <div class="ceja">Gestión · Gerente</div>
+  <section class="seccion" id="inventario" data-grupo="Abastecimiento" data-roles="gerente admin" data-titulo="Inventario y kárdex">
+    <div class="ceja">Abastecimiento · Gerentes</div>
     <h2>Inventario y kárdex</h2>
     <p class="lead">La existencia se mueve sola con cada venta y compra. Usted solo registra lo que el sistema no puede saber.</p>
     <div class="tabla-envoltura"><table>
@@ -526,10 +591,10 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
     <div class="pie-seccion"><button class="aprendido" data-hecho="inventario" aria-pressed="false">Marcar como aprendido</button></div>
   </section>
 
-  <section class="seccion" id="tablero" data-grupo="Gestión" data-roles="gerente admin" data-titulo="Leer el tablero ERP">
-    <div class="ceja">Gestión · Gerente y Admin</div>
+  <section class="seccion" id="tablero" data-grupo="Tablero" data-roles="gerente admin" data-titulo="Leer el tablero">
+    <div class="ceja">Tablero · Gerentes y oficina central</div>
     <h2>Leer el tablero ERP</h2>
-    <p class="lead">El tablero consolida las ventas de todas las tiendas en tiempo real. Un gerente con tienda asignada ve solo la suya.</p>
+    <p class="lead">El <b>Tablero</b> consolida todas las sucursales en tiempo real. El gerente de tienda lo ve como <b>Mi tienda → Reporte de la tienda</b>, solo con su sucursal.</p>
     <div class="tabla-envoltura">
       <table>
         <thead><tr><th>Indicador</th><th>Qué mide</th><th>Para qué sirve</th></tr></thead>
@@ -548,15 +613,46 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
   </section>
 
   <!-- ===================== ADMIN ===================== -->
-  <section class="seccion" id="cai" data-grupo="Administración" data-roles="admin" data-titulo="Registrar un CAI">
-    <div class="ceja">Administración · Admin</div>
-    <h2>Registrar un CAI de la SAR</h2>
-    <p class="lead">Cada tienda es un establecimiento y cada CAI pertenece a un punto de emisión. Sin un CAI vigente la caja no puede facturar.</p>
+  <section class="seccion" id="config" data-grupo="Configuración" data-roles="admin" data-titulo="Configuración y sucursales">
+    <div class="ceja">Configuración · Administrador</div>
+    <h2>Configuración y sucursales nuevas</h2>
+    <p class="lead"><b>Configuración</b> reúne lo que se define una vez para toda la cadena. Su resumen muestra el estado de cada sección y avisa lo que falta.</p>
+    <h3>Crear una sucursal</h3>
     <ol class="pasos">
-      <li><div>Con la resolución de la SAR a la mano, vaya a <span class="ui">CAI</span>.</div></li>
-      <li><div>Elija la tienda, pegue el <b>CAI</b> (37 caracteres con guiones), el <b>punto de emisión</b>, el <b>rango</b> autorizado y la <b>fecha límite de emisión</b>.</div></li>
-      <li><div>Toque <span class="ui">Guardar</span>. La barra de avance muestra cuántos números se han usado.</div></li>
-      <li><div>Solicite el siguiente CAI cuando aparezca la alerta: faltan menos de <b>30 días</b> o menos de <b>200 números</b>.</div></li>
+      <li><div>En <span class="ui">Configuración</span> → <span class="ui">Sucursales</span>, toque <span class="ui">+ Nueva sucursal</span>.</div></li>
+      <li><div>Escriba el nombre, un código interno (por ejemplo CHO-01), la dirección que saldrá en la factura y el teléfono.</div></li>
+      <li><div>Revise el <b>establecimiento SAR</b>: el sistema sugiere el siguiente libre. Debe coincidir con la resolución de la SAR y no se puede cambiar después de la primera factura.</div></li>
+      <li><div>Opcional: copie los mínimos de inventario y precios especiales de otra sucursal.</div></li>
+      <li><div>Toque <span class="ui">Crear sucursal</span>. La tarjeta de la tienda indica qué le falta, con enlaces directos para registrar su CAI y crear sus usuarios.</div></li>
+    </ol>
+
+    <div class="banco">
+      <div class="banco-cab"><b>¿Está lista para vender?</b><small>Marque lo que ya hizo</small></div>
+      <div class="banco-cuerpo dos">
+        <div class="armador" style="border-style:solid" id="ck-lista">
+          <label><input type="checkbox" id="ck-1" data-ck="Crear la sucursal con su establecimiento SAR"> Sucursal creada con su establecimiento SAR</label>
+          <label><input type="checkbox" id="ck-2" data-ck="Registrar un CAI vigente por cada caja"> CAI vigente registrado para cada caja</label>
+          <label><input type="checkbox" id="ck-3" data-ck="Crear los usuarios de la tienda"> Usuarios creados: gerente y cajeros</label>
+          <label><input type="checkbox" id="ck-4" data-ck="Cargar el inventario inicial con una compra o un traslado"> Inventario inicial cargado</label>
+          <label><input type="checkbox" id="ck-5" data-ck="Que el cajero abra su turno en su caja"> El cajero abrió su turno</label>
+        </div>
+        <div class="salida" id="ck-salida" aria-live="polite"></div>
+      </div>
+    </div>
+    <div class="nota cuidado"><strong>Desactivar una sucursal</strong>impide que sus usuarios ingresen. No se puede mientras tenga turnos de caja abiertos, y siempre debe quedar una sucursal activa.</div>
+    <div class="pie-seccion"><button class="aprendido" data-hecho="config" aria-pressed="false">Marcar como aprendido</button></div>
+  </section>
+
+  <section class="seccion" id="cai" data-grupo="Configuración" data-roles="admin" data-titulo="Registrar un CAI">
+    <div class="ceja">Configuración · Administrador</div>
+    <h2>Registrar un CAI de la SAR</h2>
+    <p class="lead">Cada sucursal es un establecimiento y cada caja es un punto de emisión con su propio CAI. Sin un CAI vigente, esa caja no puede facturar.</p>
+    <ol class="pasos">
+      <li><div>Con la resolución de la SAR a la mano, vaya a <span class="ui">Configuración</span> → <span class="ui">CAI</span>. El filtro de arriba muestra los CAI de una sola sucursal.</div></li>
+      <li><div>Elija la sucursal, pegue el <b>CAI</b> (37 caracteres con guiones), el <b>punto de emisión</b> (001 para la primera caja, 002 para la segunda), el <b>rango</b> autorizado y la <b>fecha límite de emisión</b>.</div></li>
+      <li><div>Toque <span class="ui">Registrar CAI</span>. La barra de avance muestra cuántos números se han usado.</div></li>
+      <li><div>Puede registrar el CAI siguiente <b>antes</b> de que se agote el actual: la caja usa primero el que vence antes y sigue con el otro sin detenerse.</div></li>
+      <li><div>Solicite el siguiente CAI cuando aparezca la alerta: por defecto, faltan menos de <b>30 días</b> o quedan menos de <b>200 números</b>. Estos valores se cambian en <span class="ui">Parámetros</span>.</div></li>
     </ol>
 
     <div class="banco">
@@ -583,10 +679,10 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
     <div class="pie-seccion"><button class="aprendido" data-hecho="cai" aria-pressed="false">Marcar como aprendido</button></div>
   </section>
 
-  <section class="seccion" id="config-ley" data-grupo="Administración" data-roles="admin" data-titulo="Configurar descuentos de ley">
-    <div class="ceja">Administración · Admin</div>
+  <section class="seccion" id="config-ley" data-grupo="Configuración" data-roles="admin" data-titulo="Configurar descuentos de ley">
+    <div class="ceja">Configuración · Administrador</div>
     <h2>Configurar los descuentos de ley</h2>
-    <p class="lead">Los porcentajes y reglas se cambian desde la pantalla <b>Descuentos de ley</b> sin programar. Valídelos con su asesor legal o contable antes de producción.</p>
+    <p class="lead">Los porcentajes y reglas se cambian en <b>Configuración → Descuentos de ley</b>, sin programar. Valídelos con su asesor legal o contable antes de producción.</p>
     <div class="tabla-envoltura">
       <table>
         <thead><tr><th>Campo</th><th>Efecto en caja</th></tr></thead>
@@ -604,25 +700,50 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
     <div class="pie-seccion"><button class="aprendido" data-hecho="config-ley" aria-pressed="false">Marcar como aprendido</button></div>
   </section>
 
-  <section class="seccion" id="usuarios" data-grupo="Administración" data-roles="admin" data-titulo="Roles y permisos">
-    <div class="ceja">Administración · Admin</div>
-    <h2>Roles y permisos</h2>
+  <section class="seccion" id="usuarios" data-grupo="Configuración" data-roles="admin" data-titulo="Usuarios y roles">
+    <div class="ceja">Configuración · Administrador</div>
+    <h2>Usuarios y roles</h2>
+    <p class="lead">Cada persona entra con su propio correo. El rol y la sucursal deciden qué menú ve.</p>
+    <ol class="pasos">
+      <li><div>En <span class="ui">Configuración</span> → <span class="ui">Usuarios y roles</span>, toque <span class="ui">+ Nuevo usuario</span>.</div></li>
+      <li><div>Escriba nombre y correo, y elija el <b>rol</b> y la <b>sucursal</b>. Bajo los campos se explica qué menú verá esa persona.</div></li>
+      <li><div>Asigne una <b>contraseña temporal</b> (mínimo 8 caracteres, con letras y números) y entréguesela. Ella la cambia en <span class="ui">Mi cuenta</span>.</div></li>
+      <li><div>Para una contraseña olvidada: <span class="ui">Editar</span> → <span class="ui">Restablecer</span>.</div></li>
+      <li><div>Cuando alguien deja la empresa, desmarque <b>Usuario activo</b>. Pierde el acceso en ese momento, aunque tenga la sesión abierta.</div></li>
+    </ol>
     <div class="tabla-envoltura">
       <table>
-        <thead><tr><th>Pantalla</th><th>Cajero</th><th>Gerente</th><th>Admin</th></tr></thead>
+        <thead><tr><th>Función</th><th>Cajero</th><th>Gerente de tienda</th><th>Gerente central</th><th>Administrador</th></tr></thead>
         <tbody>
-          <tr><td>Caja</td><td>✔ su tienda</td><td>✔</td><td>✔ cualquier tienda</td></tr>
-          <tr><td>Combos y promociones</td><td>—</td><td>✔</td><td>✔</td></tr>
-          <tr><td>Descuentos de ley</td><td>—</td><td>—</td><td>✔</td></tr>
-          <tr><td>CAI</td><td>—</td><td>—</td><td>✔</td></tr>
-          <tr><td>Turno de caja</td><td>✔ el suyo</td><td>✔ y cierra los de su tienda</td><td>✔ todos</td></tr>
-          <tr><td>Productos, compras e inventario</td><td>—</td><td>✔ su tienda</td><td>✔ todas</td></tr>
-          <tr><td>Tablero ERP</td><td>—</td><td>✔ su tienda</td><td>✔ todas</td></tr>
+          <tr><td>Vender, turno de caja, mi cuenta</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td></tr>
+          <tr><td>Facturas</td><td>Las suyas</td><td>Su sucursal</td><td>Todas</td><td>Todas</td></tr>
+          <tr><td>Cerrar turnos de otros cajeros</td><td>—</td><td>Su sucursal</td><td>✔</td><td>✔</td></tr>
+          <tr><td>Inventario y compras</td><td>—</td><td>Su sucursal</td><td>✔</td><td>✔</td></tr>
+          <tr><td>Reporte / tablero</td><td>—</td><td>Su sucursal</td><td>Todas</td><td>Todas</td></tr>
+          <tr><td>Catálogo: productos, combos y promociones</td><td>—</td><td>—</td><td>✔</td><td>✔</td></tr>
+          <tr><td>Configuración</td><td>—</td><td>—</td><td>—</td><td>✔</td></tr>
         </tbody>
       </table>
     </div>
-    <div class="nota cuidado"><strong>Una cuenta por persona.</strong>Cada factura guarda quién la emitió. Compartir usuarios impide saber quién otorgó un descuento.</div>
+    <div class="nota info"><strong>El sistema protege el acceso.</strong>Nadie puede desactivarse ni quitarse su propio rol, siempre queda al menos un administrador activo y no se desactiva a quien tiene un turno de caja abierto.</div>
+    <div class="nota cuidado"><strong>Una cuenta por persona.</strong>Cada factura y cada turno guardan quién los hizo. Compartir usuarios impide saber quién otorgó un descuento o a quién le faltó dinero.</div>
     <div class="pie-seccion"><button class="aprendido" data-hecho="usuarios" aria-pressed="false">Marcar como aprendido</button></div>
+  </section>
+
+  <section class="seccion" id="config-otros" data-grupo="Configuración" data-roles="admin" data-titulo="Empresa, categorías y parámetros">
+    <div class="ceja">Configuración · Administrador</div>
+    <h2>Empresa, categorías, proveedores y parámetros</h2>
+    <div class="tabla-envoltura"><table>
+      <thead><tr><th>Sección</th><th>Qué se configura</th><th>Dónde se nota</th></tr></thead>
+      <tbody>
+        <tr><td>Empresa</td><td>Razón social, nombre comercial, RTN de 14 dígitos, dirección, teléfono y correo</td><td>Encabezado de todas las facturas nuevas. La pantalla muestra una vista previa</td></tr>
+        <tr><td>Categorías</td><td>Nombre y orden</td><td>Pestañas de la pantalla Vender</td></tr>
+        <tr><td>Proveedores</td><td>Nombre, RTN y contacto; activar o desactivar</td><td>Lista de proveedores al registrar compras</td></tr>
+        <tr><td>Parámetros</td><td>Alertas de CAI (días y números), fondo de caja sugerido y mensaje al pie de la factura</td><td>Tablero, apertura de turno y factura impresa</td></tr>
+      </tbody>
+    </table></div>
+    <div class="nota info"><strong>Las facturas emitidas no cambian.</strong>Si corrige el nombre o la dirección, las facturas anteriores conservan los datos con que se imprimieron.</div>
+    <div class="pie-seccion"><button class="aprendido" data-hecho="config-otros" aria-pressed="false">Marcar como aprendido</button></div>
   </section>
 
   <!-- ===================== AYUDA ===================== -->
@@ -645,6 +766,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
       <div><dt>ISV</dt><dd>Impuesto Sobre Ventas: 15 % general y 18 % en bebidas alcohólicas. Los precios del menú ya lo incluyen.</dd></div>
       <div><dt>Establecimiento</dt><dd>Código SAR de la tienda (001, 002…). Es la primera parte del número de factura.</dd></div>
       <div><dt>Punto de emisión</dt><dd>Caja o terminal dentro de la tienda (001, 002…). Segunda parte del número.</dd></div>
+      <div><dt>Caja</dt><dd>En el sistema, un punto de emisión con su propio CAI. El cajero elige su caja al abrir turno.</dd></div>
+      <div><dt>Menú de tienda</dt><dd>El que ven los usuarios con sucursal asignada: Vender, Turno de caja, Facturas y Mi tienda.</dd></div>
+      <div><dt>Menú administrativo</dt><dd>El de oficina central: Tablero, Ventas, Catálogo, Abastecimiento y Configuración.</dd></div>
       <div><dt>Importe exento</dt><dd>Parte de la venta que no lleva ISV.</dd></div>
       <div><dt>Importe exonerado</dt><dd>Venta a entidades con exoneración (requiere constancia).</dd></div>
       <div><dt>Mix &amp; match</dt><dd>Promoción que combina artículos distintos de un grupo, como "cualquier 2 hamburguesas por L 199".</dd></div>
@@ -658,7 +782,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
   <section class="seccion" id="evaluacion" data-grupo="Ayuda" data-roles="cajero gerente admin" data-titulo="Autoevaluación">
     <div class="ceja">Practicar</div>
     <h2>Autoevaluación</h2>
-    <p class="lead">Siete preguntas para comprobar lo aprendido. <span class="marcador" id="quiz-marcador"></span></p>
+    <p class="lead">Ocho preguntas para comprobar lo aprendido. <span class="marcador" id="quiz-marcador"></span></p>
     <div id="quiz"></div>
     <button class="btn" id="quiz-reiniciar">Reiniciar evaluación</button>
     <div class="pie-seccion"><button class="aprendido" data-hecho="evaluacion" aria-pressed="false">Marcar como aprendido</button></div>
@@ -1020,14 +1144,77 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
   }
   ['#aq-fondo', '#aq-ventas', '#aq-ing', '#aq-ret', '#aq-denoms'].forEach((s) => $(s).addEventListener('input', arqueo));
 
+  // ================= ¿Qué menú verá? (misma regla que src/Support/Menu.php) =================
+  const MENUS = {
+    tienda: [
+      ['Vender', null, ['CAJERO', 'GERENTE']],
+      ['Turno de caja', null, ['CAJERO', 'GERENTE']],
+      ['Facturas', null, ['CAJERO', 'GERENTE']],
+      ['Mi tienda', [['Inventario', 'Existencias, mermas y traslados'], ['Compras', 'Recibir mercadería'], ['Reporte de la tienda', 'Ventas, ticket y diferencias de caja']], ['GERENTE']],
+    ],
+    central: [
+      ['Tablero', null, ['GERENTE', 'ADMIN']],
+      ['Ventas', [['Facturas', 'Todas las sucursales'], ['Turnos de caja', 'Aperturas, cierres y arqueos'], ['Vender', 'Caja en la sucursal seleccionada']], ['GERENTE', 'ADMIN']],
+      ['Catálogo', [['Productos', 'Alta, precios y carga masiva'], ['Combos', 'Grupos de selección y recargos'], ['Promociones', 'Mix & match por día, hora y sucursal']], ['GERENTE', 'ADMIN']],
+      ['Abastecimiento', [['Compras', 'Facturas de proveedor'], ['Inventario', 'Existencias, ajustes, traslados y kárdex']], ['GERENTE', 'ADMIN']],
+      ['Configuración', [['Empresa'], ['Sucursales'], ['CAI'], ['Usuarios y roles'], ['Descuentos de ley'], ['Categorías'], ['Proveedores'], ['Parámetros']], ['ADMIN']],
+    ],
+  };
+  function pintarMenu() {
+    const rolSel = $('#mn-rol').value;
+    const lugar = $('#mn-lugar');
+    lugar.disabled = rolSel === 'ADMIN';
+    if (rolSel === 'ADMIN') lugar.value = 'central';
+    if (rolSel === 'CAJERO' && lugar.value === 'central') {
+      $('#mn-salida').innerHTML = '<span class="estado mal">Combinación no permitida</span>';
+      $('#mn-nota').textContent = 'Un cajero siempre pertenece a una sucursal. Solo gerentes y administradores pueden ser de oficina central.';
+      return;
+    }
+    const tipo = lugar.value;
+    const items = MENUS[tipo].filter((i) => i[2].includes(rolSel));
+    $('#mn-salida').innerHTML = `<span class="estado ${tipo === 'tienda' ? 'ok' : 'alerta'}">${tipo === 'tienda' ? 'Menú de tienda' : 'Menú administrativo'}</span>
+      <ul class="arbol">${items.map(([t, hijos]) => `<li>${esc(t)}${hijos ? `<ul>${hijos.map(([h, n]) => `<li>${esc(h)}${n ? ` <small>· ${esc(n)}</small>` : ''}</li>`).join('')}</ul>` : ''}</li>`).join('')}
+        <li>Su nombre<ul><li>Mi cuenta <small>· Cambiar contraseña</small></li><li>Salir</li></ul></li></ul>`;
+    $('#mn-nota').textContent = {
+      CAJERO: 'Empieza en Vender. Ve solo sus propias facturas y su turno de caja.',
+      GERENTE: tipo === 'tienda' ? 'Empieza en Vender. Gestiona inventario, compras y el reporte de su sucursal; no cambia el catálogo de la cadena.'
+        : 'Empieza en el Tablero y elige la sucursal con el selector. Maneja el catálogo de toda la cadena; no entra a Configuración.',
+      ADMIN: 'Empieza en el Tablero. Tiene todo, incluida Configuración, y siempre es de oficina central.',
+    }[rolSel];
+  }
+  ['#mn-rol', '#mn-lugar'].forEach((x) => $(x).addEventListener('change', pintarMenu));
+
+  // ================= ¿Está lista la sucursal? =================
+  function pintarLista() {
+    const faltan = $$('#ck-lista [data-ck]').filter((c) => !c.checked);
+    $('#ck-salida').innerHTML = faltan.length === 0
+      ? '<span class="estado ok">Lista para vender</span><p style="margin:0">La sucursal ya puede facturar. En Configuración → Sucursales aparece con la etiqueta verde.</p>'
+      : `<span class="estado alerta">Falta configurar</span><p style="margin:0"><b>Siguiente paso:</b> ${esc(faltan[0].dataset.ck)}.</p>
+         <p style="margin:0;color:var(--tenue)">Pendientes: ${faltan.length} de 5.</p>`;
+  }
+  $('#ck-lista').addEventListener('change', pintarLista);
+
   // ================= Solución de problemas =================
   const PROBLEMAS = [
-    ['No hay CAI vigente con números disponibles para esta tienda. No se puede facturar.', 'Caja · al facturar', 'El CAI de la tienda venció o se acabó el rango. Avise al administrador: debe registrar el CAI nuevo en la pantalla CAI. Mientras tanto no se pueden emitir facturas.'],
+    ['No hay CAI vigente con números disponibles para esta tienda. No se puede facturar.', 'Caja · al facturar', 'El CAI de la tienda venció o se acabó el rango. Avise al administrador: debe registrar el CAI nuevo en Configuración → CAI. Mientras tanto no se pueden emitir facturas.'],
     ['El descuento de ley requiere el número de DNI o carné del beneficiario.', 'Caja · al facturar', 'Abra "Descuento de ley" y escriba el número de documento. Si el cliente no lo presenta, quite el descuento (tipo: Ninguno).'],
     ['El RTN debe tener 14 dígitos.', 'Caja · al facturar', 'Revise el RTN; los guiones se ignoran. Si el cliente no tiene RTN, deje el campo vacío y saldrá como CONSUMIDOR FINAL.'],
     ['Seleccione 1 opción(es) en "Bebida" del Combo Clásico.', 'Caja · al cotizar', 'Falta completar un grupo del combo. Quite la línea y vuelva a armar el combo eligiendo todas las partes.'],
     ['Hay opciones que no pertenecen al combo.', 'Caja · al cotizar', 'El combo cambió mientras la orden estaba abierta. Quite la línea y ármelo de nuevo.'],
     ['Producto no disponible. / Combo no disponible.', 'Caja', 'Un gerente desactivó el artículo. Recargue la página para actualizar el menú.'],
+    ['Esta sucursal tiene varias cajas. Elija su punto de emisión', 'Turno · apertura', 'Seleccione su caja en la lista "Caja (punto de emisión)" antes de abrir el turno.'],
+    ['El punto de emisión … no tiene un CAI vigente en esta sucursal.', 'Turno · apertura', 'Esa caja no tiene CAI vigente. Elija otra caja o pida al administrador que registre el CAI.'],
+    ['El código de establecimiento … ya lo usa la sucursal …', 'Configuración · Sucursales', 'Cada sucursal tiene su propio establecimiento SAR. Use el que indica la resolución; el sistema sugiere el siguiente libre.'],
+    ['No se puede cambiar el código de establecimiento: la sucursal ya emitió facturas con él.', 'Configuración · Sucursales', 'El establecimiento queda fijo desde la primera factura. Si la SAR asignó otro, cree una sucursal nueva.'],
+    ['La sucursal tiene turnos de caja abiertos. Ciérrelos antes de desactivarla.', 'Configuración · Sucursales', 'Cierre los turnos desde Ventas → Turnos de caja y vuelva a intentar.'],
+    ['El rango se cruza con el CAI … del mismo punto de emisión.', 'Configuración · CAI', 'Revise los números "desde" y "hasta" contra la resolución, o si ese CAI es de otra caja cambie el punto de emisión.'],
+    ['Ese CAI ya está registrado.', 'Configuración · CAI', 'El mismo CAI no se registra dos veces. Búsquelo con el filtro por sucursal.'],
+    ['Un cajero debe pertenecer a una sucursal.', 'Configuración · Usuarios', 'Elija la sucursal del cajero. Solo gerentes y administradores pueden ser de oficina central.'],
+    ['La contraseña debe tener al menos 8 caracteres, con letras y números.', 'Usuarios · Mi cuenta', 'Use una contraseña más larga que combine letras y números.'],
+    ['No puede desactivarse ni cambiar su propio rol.', 'Configuración · Usuarios', 'Pida a otro administrador que haga el cambio.'],
+    ['Debe quedar al menos un administrador activo.', 'Configuración · Usuarios', 'Nombre primero a otro administrador y luego haga el cambio.'],
+    ['El usuario tiene un turno de caja abierto.', 'Configuración · Usuarios', 'Cierre su turno antes de desactivarlo o cambiarlo de sucursal.'],
+    ['La contraseña actual no es correcta.', 'Mi cuenta', 'Escriba la contraseña con la que ingresó. Si la olvidó, pida a un administrador que la restablezca.'],
     ['Abra su turno de caja antes de facturar.', 'Vender', 'Abra el turno con el fondo inicial en Vender o en Turno.'],
     ['Su turno de caja no está abierto en esta tienda.', 'Vender', 'Tiene un turno abierto en otra tienda. Cambie de tienda en la barra superior o cierre ese turno.'],
     ['Ya tiene un turno abierto.', 'Turno', 'Solo puede haber un turno abierto por usuario. Ciérrelo antes de abrir otro.'],
@@ -1042,7 +1229,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
     ['La orden está vacía.', 'Caja · al facturar', 'Agregue al menos un artículo antes de facturar.'],
     ['Sesión expirada.', 'Cualquier pantalla', 'Su sesión se cerró. Vuelva a ingresar con su correo y contraseña; la orden en pantalla se pierde.'],
     ['Token de seguridad inválido. Recargue la página.', 'Formularios', 'La página quedó abierta mucho tiempo o se abrió en otra pestaña. Recargue y repita la acción.'],
-    ['Sin permiso para esta sección.', 'Menú', 'Su rol no tiene acceso a esa pantalla. Pida al administrador que revise su usuario.'],
+    ['Sin permiso para esta sección.', 'Cualquier pantalla', 'Esa pantalla no es de su menú: el catálogo y la Configuración son de oficina central. Si la necesita, pídala a un administrador.'],
     ['La promoción no se aplica', 'Caja', 'Verifique en Promociones: que esté activa, la fecha, el día de la semana, el horario y la tienda. Si otra promo de prioridad menor usa los mismos artículos, gana esa.'],
     ['El descuento de tercera edad sale menor de lo esperado', 'Caja', 'Si la línea ya tiene promoción, el sistema da el mayor beneficio, no la suma. Revise también que la línea esté marcada como Beneficiario y si existe un tope de consumo.'],
     ['Error interno. Intente de nuevo.', 'Cualquier pantalla', 'Intente otra vez. Si se repite, anote la hora y avise al administrador para revisar el registro del servidor.'],
@@ -1077,6 +1264,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
     ['Llegó la factura del proveedor pero la mercadería viene mañana. ¿Qué hace?',
       ['Guardar la compra como borrador y recibirla cuando llegue', 'Guardar y recibir hoy', 'Esperar y no registrar nada'], 0,
       'El borrador no mueve inventario; al recibir se suma la existencia que de verdad entró.'],
+    ['Se creó una sucursal nueva con sus usuarios, pero la caja no deja facturar. ¿Qué falta?',
+      ['Reiniciar el sistema', 'Registrar un CAI vigente para esa sucursal y su caja', 'Crear más productos'], 1,
+      'Una sucursal está lista para vender cuando tiene al menos un CAI vigente y usuarios. Se registra en Configuración → CAI.'],
     ['El cliente no pide factura a nombre de empresa. ¿Qué pone en RTN?',
       ['El RTN de la tienda', 'Nada: sale como CONSUMIDOR FINAL', '00000000000000'], 1,
       'El RTN del cliente es opcional; sin él la factura se emite a CONSUMIDOR FINAL.'],
@@ -1152,7 +1342,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
     if (!(rol === 'todos' || s.dataset.roles.split(' ').includes(rol))) rol = 'todos';
   }
 
-  pintarCatalogo(); pintarRecibo(); pintarExplorador(); arqueo(); validarCai(); pintarProblemas(); pintarQuiz(); pintarIndice();
+  pintarCatalogo(); pintarRecibo(); pintarExplorador(); arqueo(); pintarMenu(); pintarLista(); validarCai(); pintarProblemas(); pintarQuiz(); pintarIndice();
   if (ancla && document.getElementById(ancla)) document.getElementById(ancla).scrollIntoView();
 })();
 </script>

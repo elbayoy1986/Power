@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirigir('inventario&kardex=' . $pid, $msg);
     } catch (DomainException $e) {
         $db->rollBack();
-        redirigir('inventario' . ($pid ? '&kardex=' . $pid : ''), $e->getMessage());
+        redirigir('inventario' . ($pid ? '&kardex=' . $pid : ''), $e->getMessage(), true);
     }
 }
 

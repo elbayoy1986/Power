@@ -193,6 +193,7 @@ CREATE TABLE turnos_caja (
   id                 INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   tienda_id          INT UNSIGNED NOT NULL,
   usuario_id         INT UNSIGNED NOT NULL COMMENT 'Cajero responsable del efectivo',
+  punto_emision      CHAR(3) NULL COMMENT 'Caja (punto de emisión SAR) del turno: de su CAI salen las facturas',
   apertura           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   fondo_inicial      INT UNSIGNED NOT NULL COMMENT 'Efectivo con que abre (centavos)',
   cierre             DATETIME NULL,
@@ -367,6 +368,16 @@ CREATE TABLE compra_lineas (
   FOREIGN KEY (compra_id)   REFERENCES compras(id) ON DELETE CASCADE,
   FOREIGN KEY (producto_id) REFERENCES productos(id),
   CONSTRAINT chk_compra_cantidad CHECK (cantidad > 0)
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
+-- Parámetros generales (Configuración → Parámetros)
+-- ---------------------------------------------------------------------
+CREATE TABLE parametros (
+  clave        VARCHAR(50) PRIMARY KEY,
+  valor        VARCHAR(255) NOT NULL,
+  descripcion  VARCHAR(255) NOT NULL,
+  actualizado  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------

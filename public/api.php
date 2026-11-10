@@ -20,7 +20,7 @@ function responder(array $data, int $codigo = 200): never
     exit;
 }
 
-$usuario = Auth::usuario() ?? responder(['error' => 'Sesión expirada.'], 401);
+$usuario = Auth::refrescar() ?? responder(['error' => 'Sesión expirada.'], 401);
 $tiendaId = Auth::tiendaId();
 $db = Database::pdo();
 $catalogo = new CatalogoRepository($db);

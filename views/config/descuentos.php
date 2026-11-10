@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             (int) !empty($d['activo']), (int) $id,
         ]);
     }
-    redirigir('descuentos', 'Descuentos de ley actualizados.');
+    config_volver('descuentos', 'Descuentos de ley actualizados.');
 }
 
 $reglas = $db->query('SELECT * FROM descuentos_legales ORDER BY id')->fetchAll();
@@ -25,8 +25,7 @@ $otorgado = $db->query(
      GROUP BY d.id, d.nombre ORDER BY d.id"
 )->fetchAll();
 
-require __DIR__ . '/_layout.php';
-layout_inicio('Descuentos de ley', 'descuentos', $db);
+config_inicio('descuentos', $db);
 ?>
 <h1>Descuentos de ley · Honduras</h1>
 <p class="aviso">Los porcentajes, topes y el tratamiento de ISV son <b>parámetros</b>. Antes de producción valídelos con su

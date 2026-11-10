@@ -14,7 +14,11 @@ final class Auth
 
     public static function login(string $email, string $password): bool
     {
-        $st = Database::pdo()->prepare('SELECT * FROM usuarios WHERE email = ? AND activo = 1');
+        // Un usuario de tienda no entra si su sucursal fue desactivada
+        $st = Database::pdo()->prepare(
+            'SELECT u.* FROM usuarios u LEFT JOIN tiendas t ON t.id = u.tienda_id
+             WHERE u.email = ? AND u.activo = 1 AND (u.tienda_id IS NULL OR t.activa = 1)'
+        );
         $st->execute([$email]);
         $u = $st->fetch();
         if (!$u || !password_verify($password, $u['password_hash'])) {
@@ -42,16 +46,52 @@ final class Auth
         return (int) ($_SESSION['tienda_id'] ?? 0);
     }
 
-    public static function requerir(array $roles = ['ADMIN', 'GERENTE', 'CAJERO']): array
+    /**
+     * Vuelve a leer al usuario de la BD en cada petición: si lo desactivaron, le cambiaron el rol
+     * o la sucursal, o su sucursal cerró, el cambio surte efecto de inmediato (no hasta que salga).
+     * Devuelve null (y cierra la sesión) si ya no puede entrar.
+     */
+    public static function refrescar(): ?array
     {
         $u = self::usuario();
         if ($u === null) {
+            return null;
+        }
+        $db = Database::pdo();
+        $st = $db->prepare(
+            'SELECT u.nombre, u.rol, u.tienda_id, u.activo, t.activa AS tienda_activa
+             FROM usuarios u LEFT JOIN tiendas t ON t.id = u.tienda_id WHERE u.id = ?'
+        );
+        $st->execute([$u['id']]);
+        $f = $st->fetch();
+        if (!$f || !$f['activo'] || ($f['tienda_id'] !== null && !$f['tienda_activa'])) {
+            $_SESSION = [];
+            session_destroy();
+            return null;
+        }
+        $u = ['id' => (int) $u['id'], 'nombre' => $f['nombre'], 'rol' => $f['rol'],
+            'tienda_id' => $f['tienda_id'] !== null ? (int) $f['tienda_id'] : null];
+        $_SESSION['usuario'] = $u;
+        if ($u['tienda_id'] !== null) {
+            $_SESSION['tienda_id'] = $u['tienda_id'];
+        } else {
+            // Oficina central: la sucursal seleccionada debe seguir activa
+            $st = $db->prepare('SELECT 1 FROM tiendas WHERE id = ? AND activa = 1');
+            $st->execute([self::tiendaId()]);
+            if (!$st->fetchColumn()) {
+                $_SESSION['tienda_id'] = (int) $db->query('SELECT MIN(id) FROM tiendas WHERE activa = 1')->fetchColumn();
+            }
+        }
+        return $u;
+    }
+
+    /** Usuario vigente o redirección al login. Los permisos por página los decide Menu::puede(). */
+    public static function requerir(): array
+    {
+        $u = self::refrescar();
+        if ($u === null) {
             header('Location: index.php?p=login');
             exit;
-        }
-        if (!in_array($u['rol'], $roles, true)) {
-            http_response_code(403);
-            exit('Sin permiso para esta sección.');
         }
         return $u;
     }

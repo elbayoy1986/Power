@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } catch (DomainException $e) {
         $_SESSION['form_compra'] = $_POST;
-        redirigir('compras' . (($_POST['accion'] ?? '') === 'crear' ? '&nueva=1' : ''), $e->getMessage());
+        redirigir('compras' . (($_POST['accion'] ?? '') === 'crear' ? '&nueva=1' : ''), $e->getMessage(), true);
     }
 }
 

@@ -95,3 +95,13 @@ INSERT INTO proveedores (rtn, nombre, telefono, email) VALUES
 ('08019000000011', 'Distribuidora de Carnes del Valle', '+504 2234-1100', 'ventas@carnesdelvalle.hn'),
 ('05019000000022', 'Embotelladora Nacional',           '+504 2556-2200', 'pedidos@embotelladora.hn'),
 ('08019000000033', 'Panificadora La Espiga',           '+504 2238-3300', 'pedidos@laespiga.hn');
+
+INSERT INTO parametros (clave, valor, descripcion) VALUES
+('cai_alerta_facturas', '200', 'Avisar cuando a un CAI le queden menos de estos números'),
+('cai_alerta_dias',     '30',  'Avisar cuando falten menos de estos días para la fecha límite del CAI'),
+('fondo_caja_sugerido', '1000.00', 'Fondo inicial que se sugiere al abrir turno (L)'),
+('mensaje_factura',     '¡Gracias por su compra!', 'Mensaje al pie de la factura');
+
+-- Gerente de tienda de ejemplo (menú de tienda con gestión)
+INSERT INTO usuarios (tienda_id, nombre, email, password_hash, rol) VALUES
+(1, 'Gerente Morazán', 'gerente1@power.hn', '$2y$10$av9mu7uADXyy211p7zApduHwsmQuENH8Ep1gdEvQ7uwhyr363B99i', 'GERENTE');

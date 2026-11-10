@@ -30,7 +30,7 @@ $em = $db->query('SELECT * FROM empresa WHERE id = 1')->fetch();
     <p><?= e($t['tienda']) ?><br><b><?= $cerrado ? 'CIERRE DE CAJA (Z)' : 'CORTE PARCIAL (X)' ?></b><br>Turno #<?= (int) $t['id'] ?></p>
   </header>
   <p class="chico">
-    Cajero: <?= e($t['cajero']) ?><br>
+    Cajero: <?= e($t['cajero']) ?><?= $t['punto_emision'] ? ' · Caja ' . e($t['punto_emision']) : '' ?><br>
     Apertura: <?= e(date('d/m/Y H:i', strtotime($t['apertura']))) ?><br>
     <?= $cerrado ? 'Cierre: ' . e(date('d/m/Y H:i', strtotime($t['cierre']))) . ' por ' . e($t['cerrado_por_nombre']) : 'Impreso: ' . date('d/m/Y H:i') ?><br>
     Facturas: <?= e($r['ventas']['primera'] ?? '—') ?> a <?= e($r['ventas']['ultima'] ?? '—') ?>

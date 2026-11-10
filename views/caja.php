@@ -10,8 +10,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         switch ($_POST['accion'] ?? '') {
             case 'abrir':
-                $caja->abrir(Auth::tiendaId(), $usuario['id'], Money::aCentavos($_POST['fondo'] ?? 0));
-                redirigir($_POST['volver'] ?? 'caja', 'Turno abierto. Ya puede facturar.');
+                $caja->abrir(Auth::tiendaId(), $usuario['id'], Money::aCentavos($_POST['fondo'] ?? 0), $_POST['punto_emision'] ?? null);
+                redirigir(($_POST['volver'] ?? '') === 'pos' ? 'pos' : 'caja', 'Turno abierto. Ya puede facturar.');
             case 'movimiento':
                 $t = $caja->turnoAbierto($usuario['id']) ?? throw new DomainException('No tiene un turno abierto.');
                 $caja->movimiento((int) $t['id'], $usuario['id'], $_POST['tipo'] ?? '', Money::aCentavos($_POST['monto'] ?? 0), $_POST['motivo'] ?? '');
@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
         }
     } catch (DomainException $e) {
-        redirigir('caja' . (isset($_POST['turno_id']) ? '&cerrar=' . (int) $_POST['turno_id'] : ''), $e->getMessage());
+        redirigir('caja' . (isset($_POST['turno_id']) ? '&cerrar=' . (int) $_POST['turno_id'] : ''), $e->getMessage(), true);
     }
 }
 
@@ -52,6 +52,7 @@ $st->execute([Auth::tiendaId()]);
 $historial = $st->fetchAll();
 
 require __DIR__ . '/_layout.php';
+require __DIR__ . '/_apertura.php';
 layout_inicio('Turno de caja', 'caja', $db);
 ?>
 <h1>Turno de caja</h1>
@@ -126,18 +127,13 @@ layout_inicio('Turno de caja', 'caja', $db);
   <section class="tarjeta apertura">
     <h2>Abrir turno en <?= e($db->query('SELECT nombre FROM tiendas WHERE id = ' . Auth::tiendaId())->fetchColumn()) ?></h2>
     <p class="tenue">Cuente el efectivo con que inicia (fondo de cambio). Sin turno abierto no se puede facturar.</p>
-    <form method="post" class="fila">
-      <input type="hidden" name="csrf" value="<?= e(Auth::csrf()) ?>">
-      <input type="hidden" name="accion" value="abrir">
-      <label>Fondo inicial (L) <input name="fondo" inputmode="decimal" required placeholder="1,000.00" id="fondo"></label>
-      <button class="btn primario">Abrir turno</button>
-    </form>
+    <?php apertura_form($caja, Auth::tiendaId(), 'caja'); ?>
   </section>
 
 <?php else: $r = $resumen; ?>
   <!-- ================= Turno abierto ================= -->
   <div class="kpis">
-    <div class="kpi"><span>Abierto desde</span><b><?= e(date('H:i', strtotime($mio['apertura']))) ?></b><small><?= e(date('d/m/Y', strtotime($mio['apertura']))) ?> · <?= e($mio['tienda']) ?></small></div>
+    <div class="kpi"><span>Abierto desde</span><b><?= e(date('H:i', strtotime($mio['apertura']))) ?></b><small><?= e(date('d/m/Y', strtotime($mio['apertura']))) ?> · <?= e($mio['tienda']) ?><?= $mio['punto_emision'] ? ' · Caja ' . e($mio['punto_emision']) : '' ?></small></div>
     <div class="kpi"><span>Facturas</span><b><?= (int) $r['ventas']['facturas'] ?></b></div>
     <div class="kpi"><span>Vendido</span><b><?= lps($r['ventas']['total']) ?></b></div>
     <div class="kpi"><span>Efectivo en caja</span><b><?= lps($r['efectivo_esperado']) ?></b><small>esperado</small></div>

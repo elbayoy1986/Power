@@ -5,6 +5,7 @@ require dirname(__DIR__) . '/src/bootstrap.php';
 
 use App\Support\Auth;
 use App\Support\Database;
+use App\Support\Menu;
 
 Auth::iniciar();
 
@@ -18,54 +19,69 @@ function lps(int|string|null $centavos): string
     return App\Support\Money::fmt((int) $centavos);
 }
 
-function redirigir(string $pagina, string $msg = ''): never
+/** Redirige a index.php?p=$pagina dejando un mensaje para la siguiente pantalla. */
+function redirigir(string $pagina, string $msg = '', bool $error = false): never
 {
     if ($msg !== '') {
         $_SESSION['flash'] = $msg;
+        $_SESSION['flash_error'] = $error;
     }
     header('Location: index.php?p=' . $pagina);
     exit;
 }
 
-$rutas = [
-    'login'        => ['vista' => 'login', 'roles' => null],
-    'pos'          => ['vista' => 'pos', 'roles' => ['ADMIN', 'GERENTE', 'CAJERO']],
-    'factura'      => ['vista' => 'factura', 'roles' => ['ADMIN', 'GERENTE', 'CAJERO']],
-    'caja'         => ['vista' => 'caja', 'roles' => ['ADMIN', 'GERENTE', 'CAJERO']],
-    'cierre'       => ['vista' => 'cierre', 'roles' => ['ADMIN', 'GERENTE', 'CAJERO']],
-    'productos'    => ['vista' => 'productos', 'roles' => ['ADMIN', 'GERENTE']],
-    'inventario'   => ['vista' => 'inventario', 'roles' => ['ADMIN', 'GERENTE']],
-    'compras'      => ['vista' => 'compras', 'roles' => ['ADMIN', 'GERENTE']],
-    'combos'       => ['vista' => 'combos', 'roles' => ['ADMIN', 'GERENTE']],
-    'promociones'  => ['vista' => 'promociones', 'roles' => ['ADMIN', 'GERENTE']],
-    'descuentos'   => ['vista' => 'descuentos', 'roles' => ['ADMIN']],
-    'cai'          => ['vista' => 'cai', 'roles' => ['ADMIN']],
-    'erp'          => ['vista' => 'erp', 'roles' => ['ADMIN', 'GERENTE']],
-];
-
-$p = $_GET['p'] ?? 'pos';
-
-if ($p === 'logout') {
-    session_destroy();
-    redirigir('login');
-}
-
-// Cambio de tienda (solo usuarios sin tienda fija)
-if ($p === 'tienda' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $u = Auth::requerir(['ADMIN', 'GERENTE']);
-    Auth::verificarCsrf($_POST['csrf'] ?? null);
-    if ($u['tienda_id'] === null) {
-        $_SESSION['tienda_id'] = (int) $_POST['tienda_id'];
-    }
-    redirigir($_POST['volver'] ?? 'pos');
-}
-
-$ruta = $rutas[$p] ?? $rutas['pos'];
-$usuario = $ruta['roles'] ? Auth::requerir($ruta['roles']) : null;
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $p !== 'login') {
-    Auth::verificarCsrf($_POST['csrf'] ?? null);
-}
-
-$db = $usuario || $p === 'login' ? Database::pdo() : null;
+$p = (string) ($_GET['p'] ?? '');
 $vistas = dirname(__DIR__) . '/views/';
-require $vistas . $ruta['vista'] . '.php';
+
+if ($p === 'login') {
+    $db = Database::pdo();
+    require $vistas . 'login.php';
+    exit;
+}
+if ($p === 'logout') {
+    $_SESSION = [];
+    session_destroy();
+    header('Location: index.php?p=login');
+    exit;
+}
+
+$usuario = Auth::requerir();
+$db = Database::pdo();
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    Auth::verificarCsrf($_POST['csrf'] ?? null);
+}
+
+// Cambio de sucursal de trabajo (solo oficina central: usuarios sin sucursal fija)
+if ($p === 'tienda' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $volver = Menu::pagina((string) ($_POST['volver'] ?? ''));
+    if (!Menu::esDeTienda($usuario)) {
+        $st = $db->prepare('SELECT id FROM tiendas WHERE id = ? AND activa = 1');
+        $st->execute([(int) ($_POST['tienda_id'] ?? 0)]);
+        if ($id = $st->fetchColumn()) {
+            $_SESSION['tienda_id'] = (int) $id;
+        }
+    }
+    redirigir(isset(Menu::RUTAS[$volver]) ? $volver : Menu::inicio($usuario));
+}
+
+// Enlaces de versiones anteriores
+$antiguas = ['cai' => 'configuracion&s=cai', 'descuentos' => 'configuracion&s=descuentos'];
+if (isset($antiguas[$p])) {
+    redirigir($antiguas[$p]);
+}
+
+if (!isset(Menu::RUTAS[$p])) {
+    $p = Menu::inicio($usuario);
+}
+if (!Menu::puede($usuario, $p)) {
+    http_response_code(403);
+    require $vistas . '_layout.php';
+    layout_inicio('Sin permiso', '', $db);
+    echo '<section class="tarjeta apertura"><h2>Sin permiso para esta sección.</h2>'
+        . '<p class="tenue">Su usuario no tiene acceso a esta pantalla. Si la necesita, pídala a un administrador.</p>'
+        . '<a class="btn primario" href="index.php?p=' . e(Menu::inicio($usuario)) . '">Volver al inicio</a></section>';
+    layout_fin();
+    exit;
+}
+
+require $vistas . Menu::RUTAS[$p][0] . '.php';

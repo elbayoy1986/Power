@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirigir('productos', 'Producto "' . trim($_POST['nombre']) . '" guardado.' . (empty($_POST['id']) ? ' Ya puede cargar existencias con una compra.' : ''));
     } catch (DomainException $e) {
         $_SESSION['form_producto'] = $_POST;
-        redirigir('productos' . (!empty($_POST['id']) ? '&editar=' . (int) $_POST['id'] : ''), $e->getMessage());
+        redirigir('productos' . (!empty($_POST['id']) ? '&editar=' . (int) $_POST['id'] : ''), $e->getMessage(), true);
     }
 }
 

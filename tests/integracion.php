@@ -12,6 +12,11 @@ use App\Caja\CajaService;
 use App\Catalogo\CatalogoRepository;
 use App\Catalogo\ProductosService;
 use App\Compras\ComprasService;
+use App\Configuracion\CaiService;
+use App\Configuracion\TiendasService;
+use App\Configuracion\UsuariosService;
+use App\Support\Menu;
+use App\Support\Parametros;
 use App\Inventario\InventarioService;
 use App\Support\Database;
 use App\Ventas\CarritoService;
@@ -233,6 +238,153 @@ prueba('CSV con ; (Excel en español): crea, actualiza y crea categoría', funct
     igual(12500, (int) $db->query("SELECT precio_centavos FROM productos WHERE sku = 'HAM-CLA'")->fetchColumn(), 'precio actualizado');
     igual(1, (int) $db->query("SELECT COUNT(*) FROM categorias WHERE nombre = 'Ensaladas'")->fetchColumn(), 'categoría nueva');
     igual(12.0, (float) $db->query("SELECT minimo FROM inventario i JOIN productos p ON p.id = i.producto_id WHERE p.sku = 'CSV-1' LIMIT 1")->fetchColumn(), 'mínimo');
+});
+
+echo "Configuración: sucursales y CAI por caja\n";
+$tiendas = new TiendasService($db);
+$cais = new CaiService($db);
+$T4 = 0;
+$suc = fn (array $d = []) => $d + ['codigo' => 'CHO-01', 'nombre' => 'Power Choluteca', 'direccion' => 'Blvd. Enrique Weddle', 'telefono' => '', 'codigo_establecimiento' => '004'];
+$enUnAnio = date('Y-m-d', strtotime('+1 year'));
+// Closure con referencia: $T4 se conoce hasta que se crea la sucursal
+$cai = function (array $d = []) use (&$T4, $enUnAnio): array {
+    return $d + ['tienda_id' => $T4, 'cai' => 'AAAAAA-000001-BBBBBB-000001-CCCCCC-01', 'punto_emision' => '001',
+        'rango_inicial' => 1, 'rango_final' => 500, 'fecha_limite' => $enUnAnio];
+};
+$numero = fn (int $ventaId) => $db->query("SELECT numero_factura FROM ventas WHERE id = $ventaId")->fetchColumn();
+
+prueba('establecimiento SAR repetido se rechaza', fn () => rechaza('ya lo usa', fn () => $tiendas->guardar($suc(['codigo_establecimiento' => '001']))));
+prueba('establecimiento que no tiene 3 dígitos se rechaza', fn () => rechaza('3 dígitos', fn () => $tiendas->guardar($suc(['codigo_establecimiento' => '12']))));
+prueba('sucursal sin dirección se rechaza', fn () => rechaza('dirección', fn () => $tiendas->guardar($suc(['direccion' => ' ']))));
+prueba('crear sucursal: inventario en cero para todos los productos y mínimos copiados', function () use ($tiendas, $suc, $db, &$T4) {
+    $T4 = $tiendas->guardar($suc(['copiar_de' => 1]));
+    igual((int) $db->query('SELECT COUNT(*) FROM productos')->fetchColumn(), (int) $db->query("SELECT COUNT(*) FROM inventario WHERE tienda_id = $T4")->fetchColumn(), 'filas de inventario');
+    igual(0.0, (float) $db->query("SELECT SUM(existencia) FROM inventario WHERE tienda_id = $T4")->fetchColumn(), 'existencia');
+    igual((float) $db->query('SELECT minimo FROM inventario WHERE tienda_id = 1 AND producto_id = 2')->fetchColumn(),
+        (float) $db->query("SELECT minimo FROM inventario WHERE tienda_id = $T4 AND producto_id = 2")->fetchColumn(), 'mínimo copiado');
+});
+prueba('sucursal nueva sin CAI: alerta roja y no puede facturar', function () use ($cais, $caja, $fact, $combo, $ADMIN, &$T4) {
+    igual(['error'], array_column($cais->alertas($T4, 30, 200), 'nivel'));
+    $t = $caja->abrir($T4, $ADMIN, 0);
+    rechaza('No hay CAI vigente', fn () => $fact->emitir($T4, $ADMIN, $t, ['items' => [$combo], 'forma_pago' => 'TARJETA']));
+    $caja->cerrar($t, $ADMIN, [], '');
+});
+prueba('CAI con formato inválido se rechaza', fn () => rechaza('formato', fn () => $cais->registrar($cai(['cai' => 'ABC-123']))));
+prueba('CAI con fecha límite vencida se rechaza', fn () => rechaza('ya pasó', fn () => $cais->registrar($cai(['fecha_limite' => date('Y-m-d', strtotime('-1 day'))]))));
+prueba('CAI con rango invertido se rechaza', fn () => rechaza('Rango inválido', fn () => $cais->registrar($cai(['rango_inicial' => 500, 'rango_final' => 1]))));
+prueba('registrar CAI para la caja 001 y la caja 002 (mismo rango, distinto punto de emisión)', function () use ($cais, $cai, $caja, &$T4) {
+    $cais->registrar($cai());
+    $cais->registrar($cai(['cai' => 'AAAAAA-000002-BBBBBB-000002-CCCCCC-02', 'punto_emision' => '002']));
+    igual(['001', '002'], array_column($caja->puntosEmision($T4), 'punto_emision'));
+    igual([], $cais->alertas($T4, 30, 200), 'sin alertas');
+});
+prueba('rango que se cruza con otro CAI de la misma caja se rechaza', fn () => rechaza('se cruza', fn () => $cais->registrar($cai(['cai' => 'AAAAAA-000003-BBBBBB-000003-CCCCCC-03', 'rango_inicial' => 400, 'rango_final' => 900]))));
+prueba('el mismo CAI no se registra dos veces', fn () => rechaza('ya está registrado', fn () => $cais->registrar($cai(['punto_emision' => '003']))));
+prueba('con varias cajas hay que elegir punto de emisión al abrir turno', fn () => rechaza('varias cajas', fn () => $caja->abrir($T4, $ADMIN, 0)));
+prueba('abrir en una caja sin CAI se rechaza', fn () => rechaza('no tiene un CAI vigente', fn () => $caja->abrir($T4, $ADMIN, 0, '009')));
+prueba('el turno de la caja 002 factura con el prefijo 004-002', function () use ($caja, $fact, $combo, $numero, $ADMIN, &$T4) {
+    $t = $caja->abrir($T4, $ADMIN, 0, '002');
+    $r = $fact->emitir($T4, $ADMIN, $t, ['items' => [$combo], 'forma_pago' => 'TARJETA']);
+    igual('004-002-01-00000001', $numero($r['venta_id']));
+    $caja->cerrar($t, $ADMIN, [], '');
+});
+prueba('el turno de la caja 001 usa su propio correlativo', function () use ($caja, $fact, $combo, $numero, $ADMIN, &$T4) {
+    $t = $caja->abrir($T4, $ADMIN, 0, '001');
+    $r = $fact->emitir($T4, $ADMIN, $t, ['items' => [$combo], 'forma_pago' => 'TARJETA']);
+    igual('004-001-01-00000001', $numero($r['venta_id']));
+    $caja->cerrar($t, $ADMIN, [], '');
+});
+prueba('no se cambia el establecimiento de una sucursal que ya facturó', fn () => rechaza('ya emitió facturas', fn () => $tiendas->guardar($suc(['id' => $T4, 'codigo_establecimiento' => '009']))));
+prueba('sí se pueden editar nombre y dirección', function () use ($tiendas, $suc, $db, &$T4) {
+    $tiendas->guardar($suc(['id' => $T4, 'nombre' => 'Power Choluteca Centro']));
+    igual('Power Choluteca Centro', $db->query("SELECT nombre FROM tiendas WHERE id = $T4")->fetchColumn());
+});
+prueba('no se desactiva una sucursal con turno abierto; sin turnos sí', function () use ($tiendas, $caja, $cais, $cai, $ADMIN, &$T4) {
+    $t = $caja->abrir($T4, $ADMIN, 0, '001');
+    rechaza('turnos de caja abiertos', fn () => $tiendas->alternarActiva($T4));
+    $caja->cerrar($t, $ADMIN, [], '');
+    igual(false, $tiendas->alternarActiva($T4), 'queda inactiva');
+    rechaza('sucursal activa', fn () => $cais->registrar($cai(['cai' => 'AAAAAA-000009-BBBBBB-000009-CCCCCC-09', 'punto_emision' => '005'])));
+    igual(true, $tiendas->alternarActiva($T4), 'queda activa');
+});
+prueba('alerta de CAI por agotarse; desaparece al registrar el siguiente rango de esa caja', function () use ($cais, $cai, $db, &$T4) {
+    $db->exec("UPDATE cai SET correlativo_actual = 450 WHERE tienda_id = $T4 AND punto_emision = '001'");
+    $a = $cais->alertas($T4, 30, 200);
+    igual(['alerta'], array_column($a, 'nivel'));
+    igual('001', $a[0]['punto_emision']);
+    $cais->registrar($cai(['cai' => 'AAAAAA-000004-BBBBBB-000004-CCCCCC-04', 'rango_inicial' => 501, 'rango_final' => 5000]));
+    igual([], $cais->alertas($T4, 30, 200));
+});
+prueba('al agotarse un CAI la caja sigue con el siguiente rango registrado', function () use ($caja, $fact, $combo, $numero, $db, $ADMIN, &$T4) {
+    $db->exec("UPDATE cai SET correlativo_actual = 500 WHERE tienda_id = $T4 AND punto_emision = '001' AND rango_final = 500");
+    $t = $caja->abrir($T4, $ADMIN, 0, '001');
+    $r = $fact->emitir($T4, $ADMIN, $t, ['items' => [$combo], 'forma_pago' => 'TARJETA']);
+    igual('004-001-01-00000501', $numero($r['venta_id']));
+    $caja->cerrar($t, $ADMIN, [], '');
+});
+
+echo "Configuración: usuarios, parámetros y menús\n";
+$usuarios = new UsuariosService($db);
+$nuevoId = 0;
+$usr = fn (array $d = []) => $d + ['nombre' => 'Ana Cajera', 'email' => 'ana@power.hn', 'rol' => 'CAJERO', 'tienda_id' => $T4, 'clave' => 'Temporal2026'];
+$clave = fn (int $id) => $db->query("SELECT password_hash FROM usuarios WHERE id = $id")->fetchColumn();
+prueba('cajero sin sucursal se rechaza', fn () => rechaza('debe pertenecer a una sucursal', fn () => $usuarios->guardar($usr(['tienda_id' => '']), $ADMIN)));
+prueba('correo repetido se rechaza', fn () => rechaza('ya está registrado', fn () => $usuarios->guardar($usr(['email' => 'CAJA1@power.hn']), $ADMIN)));
+prueba('contraseña débil se rechaza', fn () => rechaza('al menos 8', fn () => $usuarios->guardar($usr(['clave' => 'abc123']), $ADMIN)));
+prueba('crear cajero de la sucursal nueva con contraseña temporal', function () use ($usuarios, $usr, $clave, $ADMIN, &$nuevoId) {
+    $nuevoId = $usuarios->guardar($usr(), $ADMIN);
+    igual(true, password_verify('Temporal2026', $clave($nuevoId)));
+});
+prueba('un administrador siempre queda sin sucursal fija', function () use ($usuarios, $usr, $db, $ADMIN) {
+    $id = $usuarios->guardar($usr(['email' => 'admin2@power.hn', 'rol' => 'ADMIN', 'tienda_id' => 1]), $ADMIN);
+    igual(null, $db->query("SELECT tienda_id FROM usuarios WHERE id = $id")->fetchColumn());
+});
+prueba('nadie se quita su propio rol ni se desactiva', fn () => rechaza('No puede desactivarse', fn () => $usuarios->guardar(
+    ['id' => $ADMIN, 'nombre' => 'Administrador', 'email' => 'admin@power.hn', 'rol' => 'GERENTE', 'activo' => 1], $ADMIN)));
+prueba('debe quedar al menos un administrador activo', function () use ($usuarios, $db, $ADMIN) {
+    $db->exec("UPDATE usuarios SET activo = 0 WHERE email = 'admin2@power.hn'");
+    rechaza('al menos un administrador', fn () => $usuarios->guardar(
+        ['id' => $ADMIN, 'nombre' => 'Administrador', 'email' => 'admin@power.hn', 'rol' => 'ADMIN'], 999));
+});
+prueba('no se desactiva ni se cambia de sucursal a quien tiene turno abierto', function () use ($usuarios, $caja, $CAJERO, $ADMIN, $T) {
+    $t = $caja->abrir($T, $CAJERO, 0);
+    $datos = ['id' => $CAJERO, 'nombre' => 'Cajero Morazán', 'email' => 'caja1@power.hn', 'rol' => 'CAJERO'];
+    rechaza('turno de caja abierto', fn () => $usuarios->guardar($datos + ['tienda_id' => $T], $ADMIN));
+    rechaza('antes de cambiarlo de sucursal', fn () => $usuarios->guardar($datos + ['tienda_id' => 2, 'activo' => 1], $ADMIN));
+    $caja->cerrar($t, $CAJERO, [], '');
+});
+prueba('cambiar la contraseña propia exige la actual y que coincidan', function () use ($usuarios, $clave, &$nuevoId) {
+    rechaza('no es correcta', fn () => $usuarios->cambiarPropiaClave($nuevoId, 'equivocada', 'Nueva2026x', 'Nueva2026x'));
+    rechaza('no coinciden', fn () => $usuarios->cambiarPropiaClave($nuevoId, 'Temporal2026', 'Nueva2026x', 'Otra2026xx'));
+    rechaza('distinta de la actual', fn () => $usuarios->cambiarPropiaClave($nuevoId, 'Temporal2026', 'Temporal2026', 'Temporal2026'));
+    $usuarios->cambiarPropiaClave($nuevoId, 'Temporal2026', 'Nueva2026x', 'Nueva2026x');
+    igual(true, password_verify('Nueva2026x', $clave($nuevoId)));
+});
+prueba('el administrador restablece una contraseña olvidada', function () use ($usuarios, $clave, &$nuevoId) {
+    $usuarios->restablecerClave($nuevoId, 'Reinicio2026');
+    igual(true, password_verify('Reinicio2026', $clave($nuevoId)));
+});
+$par = fn (array $d = []) => $d + ['cai_alerta_facturas' => '150', 'cai_alerta_dias' => '45', 'fondo_caja_sugerido' => '1,500.00', 'mensaje_factura' => 'Vuelva pronto'];
+prueba('parámetro que no es número se rechaza', fn () => rechaza('número entero', fn () => Parametros::guardar($par(['cai_alerta_dias' => 'treinta']))));
+prueba('guardar parámetros y leerlos', function () use ($par) {
+    Parametros::guardar($par());
+    igual(150, Parametros::entero('cai_alerta_facturas'));
+    igual('1500.00', Parametros::texto('fondo_caja_sugerido'));
+    igual('Vuelva pronto', Parametros::texto('mensaje_factura'));
+});
+prueba('menú de tienda para cajero y gerente de tienda; menú administrativo para oficina central', function () {
+    $u = fn (string $rol, ?int $tienda) => ['id' => 9, 'nombre' => 'X', 'rol' => $rol, 'tienda_id' => $tienda];
+    igual(['Vender', 'Turno de caja', 'Facturas'], array_column(Menu::para($u('CAJERO', 1)), 'texto'), 'cajero');
+    igual(['Vender', 'Turno de caja', 'Facturas', 'Mi tienda'], array_column(Menu::para($u('GERENTE', 1)), 'texto'), 'gerente de tienda');
+    igual(['Tablero', 'Ventas', 'Catálogo', 'Abastecimiento'], array_column(Menu::para($u('GERENTE', null)), 'texto'), 'gerente central');
+    igual(['Tablero', 'Ventas', 'Catálogo', 'Abastecimiento', 'Configuración'], array_column(Menu::para($u('ADMIN', null)), 'texto'), 'administrador');
+});
+prueba('permisos: el catálogo y la configuración son de oficina central', function () {
+    $u = fn (string $rol, ?int $tienda) => ['id' => 9, 'nombre' => 'X', 'rol' => $rol, 'tienda_id' => $tienda];
+    igual([false, false, true, true], array_map(fn ($p) => Menu::puede($u('GERENTE', 1), $p), ['productos', 'configuracion', 'inventario', 'erp']), 'gerente de tienda');
+    igual([true, false], array_map(fn ($p) => Menu::puede($u('GERENTE', null), $p), ['productos', 'configuracion']), 'gerente central');
+    igual([false, false, true, true], array_map(fn ($p) => Menu::puede($u('CAJERO', 1), $p), ['inventario', 'erp', 'facturas', 'cuenta']), 'cajero');
+    igual(false, Menu::puede($u('ADMIN', null), 'pagina-que-no-existe'), 'página desconocida');
 });
 
 echo "\n$ok/" . ($ok + $fallos) . " pruebas de integración OK\n";

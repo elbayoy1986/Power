@@ -76,7 +76,7 @@ $fila = fn (string $t, int $c) => $c ? '<tr><td>' . e($t) . '</td><td class="num
        No. identificativo del registro de la SAG: ________</p>
     <p>Rango autorizado: <?= e($v['rango_autorizado']) ?><br>
        Fecha límite de emisión: <?= e(date('d/m/Y', strtotime($v['fecha_limite_emision']))) ?></p>
-    <p class="centro">ORIGINAL: CLIENTE · COPIA: EMISOR<br>¡Gracias por su compra!</p>
+    <p class="centro">ORIGINAL: CLIENTE · COPIA: EMISOR<br><?= e(App\Support\Parametros::texto('mensaje_factura')) ?></p>
   </footer>
 </article>
 <div class="no-imprimir centro"><button class="btn primario" onclick="print()">Imprimir</button></div>

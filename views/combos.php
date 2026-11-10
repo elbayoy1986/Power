@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nombre = trim($_POST['nombre'] ?? '');
     $precio = Money::aCentavos($_POST['precio'] ?? 0);
     if ($nombre === '' || $precio <= 0 || !$grupos) {
-        redirigir('combos', 'Complete nombre, precio y al menos un grupo con opciones.');
+        redirigir('combos', 'Complete nombre, precio y al menos un grupo con opciones.', true);
     }
 
     $db->beginTransaction();
